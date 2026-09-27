@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Time Toss" />
+<meta name="application-name" content="Time Toss" />
+<meta name="theme-color" content="#3a2270" />
+<title>Time Toss: duel your way through history</title>
+<link rel="icon" href="icon.svg?v=1" type="image/svg+xml" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1" />
+<link rel="manifest" href="manifest.webmanifest?v=1" />
+<link rel="stylesheet" href="style.css?v=1" />
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <header id="hud">
+    <div class="side left" id="sideP">
+      <div class="av" id="avP"></div>
+      <div class="info"><span class="nm" id="nmP">You</span><div class="hp" id="hpBoxP"><i id="hpFillP"></i><b id="hpP">100</b></div><span class="row"><span class="pips" id="pipsP"></span><span class="dmg" id="dmgP">⚔ 0</span></span></div>
+    </div>
+    <div class="side right" id="sideB">
+      <div class="info"><span class="nm" id="nmB">Ugga Bunga</span><div class="hp" id="hpBoxB"><i id="hpFillB"></i><b id="hpB">100</b></div><span class="row"><span class="dmg" id="dmgB">⚔ 0</span><span class="pips" id="pipsB"></span></span></div>
+      <div class="av" id="avB"></div>
+    </div>
+  </header>
+
+  <div id="subhud">
+    <div id="roundLbl" class="pill">ROUND 1 / 5</div>
+    <button id="muteBtn" class="hbtn" aria-label="Sound on/off">🔊</button>
+  </div>
+
+  <div id="banner" class="banner"></div>
+  <div id="count" class="count"><span id="countNum">5</span></div>
+  <div id="hint" class="hint"></div>
+
+  <div id="bottom">
+    <div id="timer" class="timer"><i id="timerBar"></i><b id="timerTxt">8.0</b></div>
+    <div id="bullets" class="bullets"></div>
+    <button id="duckBtn" class="duck" aria-label="Duck"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" class="ringBg"/><circle cx="50" cy="50" r="46" class="ring" id="stamRing"/></svg><span>DUCK</span></button>
+  </div>
+
+  <!-- Start screen -->
+  <div id="menu" class="overlay show">
+    <div class="panel">
+      <h1 class="logo">TIME<span>TOSS</span></h1>
+      <p class="sub">Duel your way from spears to space!</p>
+      <div class="tro">
+        <div class="troTop"><b class="troN">🏆 <span id="mTro">0</span></b><span class="coinPill">🪙 <b id="mCoins">0</b></span></div>
+        <div class="tbar"><i id="mBar"></i></div>
+        <small id="mBarLbl" class="tlbl"></small>
+        <small id="mStreak" class="streakLine"></small>
+      </div>
+      <p class="howto">Hold to aim <b>above</b> him, let go to throw. Hold <b>DUCK</b> when he winds up!</p>
+      <ul class="rules">
+        <li>He hides <b>5 s</b>, then you get <b>3 throws</b>. Then you hide!</li>
+        <li>Head hits do <b>double</b> damage</li>
+        <li><b>KO</b> wins. Else most damage after <b>5 rounds</b> (tie: sudden death)</li>
+      </ul>
+      <button id="playBtn" class="big">PLAY ▶</button>
+      <button id="menuShopBtn" class="big alt">SHOP</button>
+    </div>
+  </div>
+
+  <!-- Era map -->
+  <div id="eras" class="overlay">
+    <div class="panel eraPanel">
+      <div class="eraHead"><button id="erasBack" class="back" aria-label="Back">‹</button><h2 class="eraTitle">PICK YOUR ERA</h2><span id="eraTro" class="eraTro">🏆 0</span></div>
+      <div id="eraList" class="eraList"></div>
+      <p id="eraHint" class="eraHint"></p>
+    </div>
+  </div>
+
+  <!-- End screen -->
+  <div id="over" class="overlay">
+    <div class="panel endPanel">
+      <div id="oStreak" class="streak"></div>
+      <h2 id="oTitle" class="endTitle">YOU WIN!</h2>
+      <p id="oSub" class="sub"></p>
+      <div class="finals">
+        <div class="fin"><small>YOU · DAMAGE</small><b id="oP">0</b><em id="oHpP"></em></div>
+        <div class="vs">vs</div>
+        <div class="fin"><small id="oBn">UGGA BUNGA</small><b id="oB">0</b><em id="oHpB"></em></div>
+      </div>
+      <p id="oStats" class="stats"></p>
+      <div class="tro">
+        <div class="troTop"><b class="troN">🏆 <span id="oTro">0</span></b><span id="oDelta" class="delta"></span></div>
+        <div class="tbar"><i id="oBar"></i></div>
+        <small id="oBarLbl" class="tlbl"></small>
+        <small id="oCoins" class="coinLine"></small>
+      </div>
+      <button id="againBtn" class="big">PLAY AGAIN ▶</button>
+      <div class="btnRow"><button id="mapBtn" class="big alt">ERA MAP</button><button id="endShopBtn" class="big alt">SHOP</button></div>
+    </div>
+  </div>
+
+  <!-- Shop (pretend coins earned in matches; nothing is sold for money) -->
+  <div id="shop" class="overlay">
+    <div class="panel shopPanel">
+      <div class="eraHead"><button id="shopBack" class="back" aria-label="Back">‹</button><h2 class="eraTitle">SHOP</h2><span class="eraTro">🪙 <b id="sCoins">0</b></span></div>
+      <p class="shopEra">Stone Age gear</p>
+      <div id="shopTabs" class="tabs"><button data-tab="weapons" class="on">WEAPON</button><button data-tab="outfits">OUTFIT</button></div>
+      <div id="shopList" class="shopList"></div>
+      <p id="shopMsg" class="eraHint"></p>
+      <p class="note">More gear arrives with each new era.</p>
+    </div>
+  </div>
+</div>
+<script src="game.js?v=1"></script>
+</body>
+</html>

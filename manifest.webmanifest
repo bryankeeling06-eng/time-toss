@@ -1,0 +1,15 @@
+{
+  "name": "Time Toss",
+  "short_name": "Time Toss",
+  "description": "A cartoon duel through history. Hide, aim, toss.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2a1d66",
+  "theme_color": "#3a2270",
+  "icons": [
+    { "src": "apple-touch-icon.png?v=1", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon.svg?v=1", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

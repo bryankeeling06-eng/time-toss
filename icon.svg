@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a2a86"/>
+      <stop offset=".45" stop-color="#c1487e"/>
+      <stop offset=".75" stop-color="#ff9a5a"/>
+      <stop offset="1" stop-color="#ffd08a"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2b27a"/>
+      <stop offset="1" stop-color="#d98452"/>
+    </linearGradient>
+  </defs>
+  <rect width="180" height="180" fill="url(#sky)"/>
+  <!-- clock sun -->
+  <circle cx="90" cy="96" r="44" fill="#ffe7a8"/>
+  <circle cx="90" cy="96" r="36" fill="#fff4cf"/>
+  <g stroke="#e0913e" stroke-width="3.5" stroke-linecap="round">
+    <line x1="90" y1="64" x2="90" y2="70"/><line x1="90" y1="122" x2="90" y2="128"/>
+    <line x1="58" y1="96" x2="64" y2="96"/><line x1="116" y1="96" x2="122" y2="96"/>
+  </g>
+  <g stroke="#7a3f2a" stroke-width="5" stroke-linecap="round">
+    <line x1="90" y1="96" x2="90" y2="75"/><line x1="90" y1="96" x2="104" y2="104"/>
+  </g>
+  <circle cx="90" cy="96" r="4.5" fill="#7a3f2a"/>
+  <!-- canyon walls -->
+  <path d="M0 40 L22 44 L20 70 L34 76 L30 112 L44 120 L40 180 L0 180Z" fill="#b8553e"/>
+  <path d="M0 58 L16 62 M0 88 L26 92 M0 122 L34 126" stroke="#8e3c30" stroke-width="4"/>
+  <path d="M180 46 L160 50 L162 80 L148 86 L152 118 L138 126 L142 180 L180 180Z" fill="#a64a3a"/>
+  <path d="M180 66 L164 70 M180 98 L154 102 M180 132 L146 136" stroke="#833629" stroke-width="4"/>
+  <!-- ground -->
+  <path d="M0 128 Q90 116 180 128 L180 180 L0 180Z" fill="url(#sand)"/>
+  <!-- rock -->
+  <path d="M52 156 Q56 122 90 118 Q124 120 130 156Z" fill="#9a7a64"/>
+  <path d="M60 150 Q66 128 90 124" stroke="#c4a488" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M100 132 l6 8 l-4 6" stroke="#6e5444" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- arc trail -->
+  <path d="M12 160 Q70 -6 124 76" stroke="#5a2a4a" stroke-width="7" fill="none" stroke-dasharray="3 10" stroke-linecap="round" opacity=".55"/>
+  <path d="M12 160 Q70 -6 124 76" stroke="#fff" stroke-width="4.5" fill="none" stroke-dasharray="3 10" stroke-linecap="round"/>
+  <!-- spear, mid-flight on the way down over the rock -->
+  <g transform="translate(130 80) rotate(38)">
+    <rect x="-58" y="-4" width="60" height="8" rx="4" fill="#6e4428" stroke="#3c2a36" stroke-width="2"/>
+    <rect x="-56" y="-1.2" width="56" height="2.4" fill="#d09360"/>
+    <path d="M0 -11 L28 0 L0 11 Z" fill="#9aa3b6" stroke="#3c2a36" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M-62 -8 l10 8 l-10 8" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>
