@@ -26,7 +26,7 @@ All five are playable. Unlock with trophies: **1,000 / 2,500 / 4,500 / 7,000**.
 4. **Their turn:** slide **◀ ▶** between your 3 covers or hold **DUCK** when they wind up / glint.
 5. **KO** or most damage after **5 rounds** (tie → sudden death).
 
-Controls: touch aim, ◀ ▶ move, DUCK; desktop also supports mouse, arrows/A/D, Space.
+Controls: touch aim, ◀ ▶ move, DUCK; desktop also supports mouse, arrows/A/D, Space. Sound resumes after an iPhone call or app switch (the 🔊/🔇 mute toggle is remembered).
 
 ## Progression & fresh save
 

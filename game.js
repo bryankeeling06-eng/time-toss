@@ -267,19 +267,64 @@
     result: null, lastReward: null, rewarded: false
   };
   // ---------- audio (WebAudio synth; resumes on first gesture for iOS) ----------
+  // After a phone call / app switch, iOS leaves AudioContext in 'interrupted' or 'suspended'.
+  // We resume on visibility/focus/pageshow + context statechange, but never unmute the speaker toggle.
   var actx = null, master = null, noiseBuf = null;
   var muted = SAVE.muted;
-  function audio() {
-    if (!actx) {
-      try {
-        actx = new (window.AudioContext || window.webkitAudioContext)();
-        master = actx.createGain(); master.gain.value = muted ? 0 : 0.6; master.connect(actx.destination);
-        noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.6, actx.sampleRate);
-        var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      } catch (e) { actx = null; }
-    }
-    if (actx && actx.state !== 'running') { try { var p = actx.resume(); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+  var audioWasInterrupted = false;
+  function createAudioGraph() {
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      master = actx.createGain(); master.gain.value = muted ? 0 : 0.6; master.connect(actx.destination);
+      noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.6, actx.sampleRate);
+      var d = noiseBuf.getChannelData(0); for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      actx.addEventListener('statechange', onAudioStateChange);
+    } catch (e) { actx = null; master = null; noiseBuf = null; }
   }
+  function onAudioStateChange() {
+    if (!actx) return;
+    // iOS uses 'interrupted' during a call; browsers use 'suspended' when backgrounded.
+    if (actx.state === 'interrupted' || actx.state === 'suspended') audioWasInterrupted = true;
+    if (actx.state === 'running' && master) master.gain.value = muted ? 0 : 0.6;
+    // Auto-resume only for iOS 'interrupted' while foregrounded. 'suspended' is left to
+    // visibility/focus/pageshow so intentional suspend (and tests) are not immediately undone.
+    if (actx.state === 'interrupted' && !document.hidden) resumeAudio(false);
+  }
+  function wakeTick() {
+    // Near-silent tick to kick the graph after an interrupt (only when the player wants sound).
+    if (!actx || muted || actx.state !== 'running' || !master) return;
+    try {
+      var t0 = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = 40; g.gain.value = 0.00001;
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + 0.02);
+    } catch (e) {}
+  }
+  function resumeAudio(fromGesture) {
+    if (actx && actx.state === 'closed') { actx = null; master = null; noiseBuf = null; }
+    if (!actx) {
+      // Creating a context usually needs a user gesture on iOS; still try on foreground so
+      // post-call resumes work when the OS already allows it.
+      createAudioGraph();
+    }
+    if (!actx) return Promise.resolve('none');
+    // Always re-apply mute preference — interruption must not leave gain stuck at 0 while unmuted,
+    // and must not turn sound on if the player muted on purpose.
+    if (master) master.gain.value = muted ? 0 : 0.6;
+    if (actx.state === 'running') {
+      if (audioWasInterrupted && !muted) { audioWasInterrupted = false; wakeTick(); }
+      return Promise.resolve('running');
+    }
+    audioWasInterrupted = true;
+    var p;
+    try { p = actx.resume(); } catch (e) { return Promise.resolve(actx.state); }
+    if (!p || !p.then) return Promise.resolve(actx.state);
+    return p.then(function () {
+      if (master) master.gain.value = muted ? 0 : 0.6;
+      if (actx.state === 'running' && !muted) { audioWasInterrupted = false; wakeTick(); }
+      return actx.state;
+    }).catch(function () { return actx ? actx.state : 'none'; });
+  }
+  function audio() { resumeAudio(true); }
   function tone(f, dur, type, vol, f2, delay) {
     if (!actx || muted || actx.state !== 'running') return;
     var t0 = actx.currentTime + (delay || 0);
@@ -319,10 +364,17 @@
     lose: function () { [494, 440, 392, 330].forEach(function (f, i) { tone(f, 0.26, 'triangle', 0.16, null, i * 0.16); }); }
   };
   function setMuted(m) {
-    muted = m; SAVE.muted = m; writeSave(SAVE);
-    if (master) master.gain.value = m ? 0 : 0.6;
-    $('muteBtn').textContent = m ? '🔇' : '🔊';
+    muted = !!m; SAVE.muted = muted; writeSave(SAVE);
+    if (master) master.gain.value = muted ? 0 : 0.6;
+    $('muteBtn').textContent = muted ? '🔇' : '🔊';
   }
+  function onForeground() {
+    // Phone call ended / tab focused again — resume WebAudio without flipping the mute toggle.
+    resumeAudio(false);
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) onForeground(); });
+  window.addEventListener('pageshow', onForeground);
+  window.addEventListener('focus', onForeground);
 
   // ---------- scenes (cached background; redrawn as vectors inside a scope) ----------
   var bg = document.createElement('canvas'), bgc = bg.getContext('2d');
@@ -2209,7 +2261,15 @@
       return { enemy: en, player: pl };
     },
     botRetarget: function (v) { G.botRetarget = v == null ? null : !!v; },
-    layout: function () { return { W: W, H: H, DPR: DPR, Y0: Y0, PX: PX, PY: PY, PS: PS }; }
+    layout: function () { return { W: W, H: H, DPR: DPR, Y0: Y0, PX: PX, PY: PY, PS: PS }; },
+    // Audio resume / mute (iOS call interruption tests)
+    audioState: function () { return actx ? actx.state : 'none'; },
+    getMuted: function () { return !!muted; },
+    setMuted: setMuted,
+    resumeAudio: function () { return resumeAudio(false); },
+    suspendAudio: function () { return actx ? actx.suspend() : Promise.resolve(); },
+    onForeground: onForeground,
+    ensureAudio: function () { return resumeAudio(true); }
   };
 
   // ---------- boot ----------
