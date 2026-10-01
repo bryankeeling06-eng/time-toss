@@ -21,7 +21,7 @@ Eras are data-driven: each entry in the `ERAS` array in `game.js` sets its scene
 ## How to play
 
 1. Tap **PLAY**, then pick **Stone Age** on the era map.
-2. **Your turn:** "ENEMY IS HIDING" counts down 5 to 1 while Ugga Bunga ducks behind his rock. Then you get **8 seconds for 3 spears**.
+2. **Your turn:** "ENEMY IS HIDING" counts down 5 to 1 while Ugga Bunga ducks behind his rock. Then you get **3 spears, with no time limit**. Take as long as you like; your turn ends once the 3rd spear lands.
    - Touch and hold to aim, drag, and let go to throw. Spears fly in a slow, high arc, so **aim above him**.
    - While you aim, a dotted guide shows the start of the arc and a dashed ring shows where the spear will reach his distance. He moves and ducks, and the spear takes about a second to get there, so lead him a little.
    - Head hits do double damage. Spears that hit the rock go "CLONK!".
@@ -97,7 +97,7 @@ All Stone Age items cost **2,520 coins** in total. Later eras have placeholder g
 - Bot damage = `baseDamage[era] + trophies × 0.006`. Stone Age starts at 14 and is 20 at 1,000 trophies.
 - Bot accuracy = `min(0.7, baseAcc[era] + trophies × 0.00002)`. Stone Age starts at 50% and is 52% at 1,000 trophies. 15% of the bot's on-target throws are head hits.
 - Ducking stamina drains at 0.2/s and refills at 0.45/s. When it runs out, you're too tired to duck until it's back to 35%.
-- 3 throws per turn, a 5-second hide, 8 seconds to aim (the bot turn takes about 8.5 s), up to 5 rounds plus 3 sudden-death rounds.
+- 3 throws per turn, a 5-second hide, no time limit on your throws (the bot turn takes about 8.5 s), up to 5 rounds plus 3 sudden-death rounds.
 
 **Pacing** (measured headlessly with a simulated player at real speed, plus a Monte Carlo of the trophy rules)
 

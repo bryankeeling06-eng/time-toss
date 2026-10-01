@@ -24,8 +24,12 @@
       baseHealth: [100, 130, 170, 220, 280], healthPerTrophy: 0.05,
       baseDamage: [14, 18, 22, 28, 34], damagePerTrophy: 0.006,
       baseAcc: [0.5, 0.52, 0.55, 0.58, 0.6], accPerTrophy: 0.00002, accMax: 0.7,
-      headShare: 0.15
+      headShare: 0.15,
+      // Wind-up aim: the bot aims at the rock you're at when it winds up. At release it re-aims at your new rock
+      // with this chance, but only if you've already been standing there for retargetSettle seconds.
+      retarget: 0.35, retargetSettle: 0.45
     },
+    move: { slide: 0.25 },  // seconds to slide between your rocks
     // Weapon upgrade levels per era (buy in order; equip any owned). dmg = body damage.
     // steady: extra aim-guide length (share of the arc). reload: throw cooldown multiplier.
     weapons: {
@@ -60,34 +64,36 @@
   // =====================================================================
   var ERAS = [
     { id: 'stone', name: 'Stone Age', weapon: 'Spear', built: true, scene: 'canyon',
-      cover: { kind: 'rock', tall: 0.8, low: 0.8, halfW: 1.2 },
+      // spots: world x of the enemy's 3 rocks. playerSpots: screen-width fractions of the player's 3 rocks.
+      cover: { kind: 'rock', tall: 0.8, low: 0.8, halfW: 1.0, spots: [-2.4, 0, 2.4] },
+      playerSpots: [0.17, 0.5, 0.83], hideRun: 5,
       shot: { kind: 'arc', speed: 7.6, g: 5, guide: 0.55, len: 0.9, cool: 0.6, ring: true },
-      aimTime: 8, botTime: 8.5, dist: [8, 10], lane: [-0.2, 2.6], agility: 0.4,
+      botTime: 8.5, dist: [8, 10], agility: 0.4,
       bot: { name: 'Ugga Bunga', look: 'caveman', tell: 'windup', flight: 0.75 },
       player: { outfit: 'cave' }, ammo: 'spear',
-      hints: { aim: 'Hold, aim above him, let go to throw', bot: 'Hold DUCK when he winds up!' } },
+      hints: { aim: 'Find him, aim above him, let go to throw', bot: 'He aims at your rock: slide ◀ ▶ or DUCK!' } },
     { id: 'castle', name: 'Castle', weapon: 'Bow & arrows', built: false, scene: 'castle',
       cover: { kind: 'haystack', tall: 1.0, low: 1.0, halfW: 1.1 },
       shot: { kind: 'arc', speed: 16, g: 7, guide: 0.35, len: 0.8, cool: 0.5 },
-      aimTime: 7, botTime: 8, dist: [11, 14], agility: 0.55,
+      botTime: 8, dist: [11, 14], agility: 0.55,
       bot: { name: 'Sir Wobblebottom', look: 'knight', tell: 'windup', flight: 0.6 }, player: { outfit: 'knight' }, ammo: 'arrow',
       hints: { aim: 'Aim a little above, let go to shoot', bot: 'Hold DUCK when he draws!' } },
     { id: 'wildwest', name: 'Wild West', weapon: 'Musket', built: false, scene: 'saloon',
       cover: { kind: 'barrel', tall: 1.0, low: 1.0, halfW: 0.6 },
       shot: { kind: 'arc', speed: 40, g: 3, guide: 0.2, len: 0.2, cool: 1.2 },
-      aimTime: 7, botTime: 7.5, dist: [12, 15], agility: 0.65,
+      botTime: 7.5, dist: [12, 15], agility: 0.65,
       bot: { name: 'Dusty Pete', look: 'bandit', tell: 'glint', flight: 0.3 }, player: { outfit: 'cowpoke' }, ammo: 'ball',
       hints: { aim: 'Nearly straight shots, slow reload', bot: 'Hold DUCK when you see the glint!' } },
     { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: false, scene: 'desert',
       cover: { kind: 'halftone', tall: 2.3, low: 0.6, halfW: 1.3 },
       shot: { kind: 'hitscan', zoom: 2.3, sens: 1.25, cool: 0.45 },
-      aimTime: 7, botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
+      botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
       bot: { name: 'Sgt. Cactus', look: 'cactus', tell: 'glint', flight: 0 }, player: { outfit: 'modern' }, ammo: 'bullet',
       hints: { aim: 'Drag to aim · hold to zoom · let go to fire', bot: 'Hold DUCK when you see the glint!' } },
     { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: false, scene: 'moon',
       cover: { kind: 'shield', tall: 1.2, low: 1.2, halfW: 1.0, blockChance: 0.3 },
       shot: { kind: 'hitscan', zoom: 1.6, sens: 1.1, cool: 0.35 },
-      aimTime: 6, botTime: 7, dist: [10, 13], agility: 0.9,
+      botTime: 7, dist: [10, 13], agility: 0.9,
       bot: { name: 'Zorp', look: 'alien', tell: 'glint', flight: 0 }, player: { outfit: 'space' }, ammo: 'cell',
       hints: { aim: 'Instant laser! Watch his shield', bot: 'Hold DUCK when his blaster glows!' } }
   ];
@@ -224,12 +230,12 @@
   var G = {
     era: ERAS[0], phase: 'menu', pt: 0, time: 0, ts: 1, paused: false,
     round: 1, sudden: 0, hpP: 100, hpB: 100, maxP: 100, maxB: 100, dmgP: 0, dmgB: 0, bot: botStats(ERAS[0], 0),
-    shotsP: 3, shotsB: 3, countNum: 0, timeLeft: 0, cool: 0, endT: 0, ending: false, timeUp: false, ko: null,
+    shotsP: 3, shotsB: 3, countNum: 0, timeLeft: 0, cool: 0, endT: 0, ending: false, ko: null,
     aim: { x: 195, y: 400 }, aiming: false, hover: null, pointerId: null, pressT: 0, last: null,
     scope: 0, scopeTarget: 0, scopeHold: 0,
     enemy: { baseWx: 0.5, z: 9, wx: 0.5, tx: 0.5, duck: 0, duckTarget: 0, duckT: 0, actT: 0, flash: 0, hitT: 0, hatOff: 0, pose: 0, dizzy: 0 },
     coverH: 0.8, coverFrom: 0.8, coverTo: 0.8, coverT: 1,
-    player: { duck: 0, stam: 1, tired: false, flash: 0, recoil: 0, hitT: 0 },
+    player: { duck: 0, stam: 1, tired: false, flash: 0, recoil: 0, hitT: 0, slot: 1, xf: 0.5, from: 0.5, to: 0.5, mt: 9, settled: 9 },
     pcH: 0, duckHeld: false, keyDuck: false, btnDuck: false, ptrDuck: false,
     botShots: [], tell: 0, botForce: null, proj: [], stuck: [], botSpears: [], nearStuck: [],
     fx: [], shake: 0, freeze: false,
@@ -280,6 +286,7 @@
     glint: function () { tone(2300, 0.07, 'sine', 0.09); tone(3000, 0.08, 'sine', 0.07, null, 0.08); },
     ouch: function () { tone(520, 0.28, 'sawtooth', 0.12, 180); },
     whoosh: function () { noise(0.35, 0.18, 500); },
+    step: function () { noise(0.12, 0.12, 900); },
     throw: function () { noise(0.28, 0.25, 1400); tone(420, 0.22, 'sine', 0.12, 160); },
     bonk: function () { tone(240, 0.12, 'square', 0.14, 520); tone(700, 0.1, 'sine', 0.2, 1100, 0.05); },
     clonk: function () { tone(170, 0.14, 'triangle', 0.3, 120); noise(0.08, 0.2, 2500); },
@@ -551,6 +558,12 @@
     var e = G.enemy, co = G.era.cover, z = e.z - 0.7, q = proj(e.baseWx, 0, z);
     return { x: q.x, base: q.y, s: q.s, z: z, w: 2 * co.halfW * q.s, top: q.y - G.coverH * q.s, x0: q.x - co.halfW * q.s, x1: q.x + co.halfW * q.s };
   }
+  function coverSpots() { return G.era.cover.spots || [G.enemy.baseWx]; }
+  function coverGeomAt(i) {
+    var co = G.era.cover, z = G.enemy.z - 0.7, q = proj(coverSpots()[i], 0, z);
+    return { x: q.x, base: q.y, s: q.s, z: z, w: 2 * co.halfW * q.s, top: q.y - G.coverH * q.s, x0: q.x - co.halfW * q.s, x1: q.x + co.halfW * q.s };
+  }
+  function nearestIdx(arr, v) { var b = 0; for (var i = 1; i < arr.length; i++) if (Math.abs(arr[i] - v) < Math.abs(arr[b] - v)) b = i; return b; }
   function enemyGeom() {
     var e = G.enemy, q = proj(e.wx, 0, e.z), s = q.s, sink = e.duck * 1.25 - Math.sin(G.time * 3) * 0.015;
     return {
@@ -787,6 +800,7 @@
     }
     c.restore();
     if (era.cover.kind === 'halftone') drawCover(c, cg.x, cg.base, cg.w, G.coverH * cg.s, res, true);
+    else if (era.cover.spots) { for (var ri = 0; ri < era.cover.spots.length; ri++) { var rg = coverGeomAt(ri); drawBigRock(c, rg.x, rg.base, rg.s, rg.w / rg.s, G.coverH); } }
     else drawBigRock(c, cg.x, cg.base, cg.s, cg.w / cg.s, G.coverH);
     if (era.shot.kind === 'arc') drawWorldSpears(c, function (z) { return z <= e.z; });
     if (G.tell > 0 && G.phase === 'botFire') {
@@ -877,7 +891,36 @@
     }
     c.restore();
   }
+  // ---------- player rocks + sliding ----------
+  function pSlots() { return G.era.playerSpots || [0.2]; }
+  function multiSlot() { return pSlots().length > 1; }
+  function playerCoverGeomAt(i) { return { x: W * pSlots()[i] + 10 * PS, base: PY - 30 * PS, w: 196 * PS, tall: 150 * PS, low: 150 * PS }; }
+  function playerRockIdx() { return nearestIdx(pSlots(), G.player.xf); }  // mid-slide you count as being at the closer rock
+  function canMove() { return multiSlot() && !G.ko && ['enemyHide', 'aim', 'swap', 'playerHide', 'botFire', 'roundEnd'].indexOf(G.phase) >= 0; }
+  function movePlayer(dir) {
+    var p = G.player, sl = pSlots(), n = clamp(p.slot + dir, 0, sl.length - 1);
+    if (!canMove() || n === p.slot) return p.slot;
+    p.from = p.xf; p.to = sl[n]; p.mt = 0; p.slot = n; p.settled = 0;
+    sfx.step();
+    return n;
+  }
+  function placePlayer(i) { var p = G.player, sl = pSlots(); i = clamp(i, 0, sl.length - 1); p.slot = i; p.xf = p.from = p.to = sl[i]; p.mt = 9; p.settled = 9; PX = W * p.xf; }
+  function stepPlayerSlide(dt) {
+    var p = G.player, T = BALANCE.move.slide;
+    if (p.mt < T) { p.mt += dt; var u = clamp(p.mt / T, 0, 1); u = u * u * (3 - 2 * u); p.xf = p.from + (p.to - p.from) * u; }
+    else { p.xf = p.to; p.settled += dt; }
+    PX = W * p.xf;
+  }
+  function drawTargetMarker(c, i, a) {
+    var x = W * pSlots()[i], y = PY - 290 * PS, r = 46 * PS * (1 + 0.08 * Math.sin(G.time * 12));  // chest height over that rock, clear of the DUCK button
+    c.save(); c.globalAlpha = a; c.lineWidth = 4; c.strokeStyle = '#ff3b4f'; c.setLineDash([9, 6]);
+    c.beginPath(); c.ellipse(x, y, r * 1.5, r, 0, 0, 7); c.stroke(); c.setLineDash([]);
+    c.lineWidth = 3; c.beginPath(); c.moveTo(x - r * 1.9, y); c.lineTo(x - r * 1.1, y); c.moveTo(x + r * 1.1, y); c.lineTo(x + r * 1.9, y); c.stroke();
+    c.fillStyle = '#ff3b4f'; c.beginPath(); c.moveTo(x, y - r - 4); c.lineTo(x - 12, y - r - 24); c.lineTo(x + 12, y - r - 24); c.closePath(); c.fill();
+    c.restore();
+  }
   function playerCoverGeom() {
+    if (multiSlot()) return playerCoverGeomAt(playerRockIdx());
     if (G.era.cover.kind === 'halftone') return { x: PX + 36 * PS, base: PY - 42 * PS, w: 300 * PS, tall: 270 * PS, low: 110 * PS };
     return { x: PX + 44 * PS, base: PY - 30 * PS, w: 340 * PS, tall: 150 * PS, low: 150 * PS };
   }
@@ -1113,10 +1156,12 @@
     pips('pipsP', G.shotsP); pips('pipsB', G.shotsB);
     var mode = G.phase === 'aim' ? 'mode-aim' : G.phase === 'botFire' ? 'mode-bot' : '';
     setClass(app, 'mode-aim', mode === 'mode-aim'); setClass(app, 'mode-bot', mode === 'mode-bot');
+    setClass(app, 'can-move', canMove());
+    if (multiSlot()) { setClass($('leftBtn'), 'off', G.player.slot <= 0); setClass($('rightBtn'), 'off', G.player.slot >= pSlots().length - 1); }
     setClass($('sideP'), 'active', G.phase === 'aim' || G.phase === 'enemyHide');
     setClass($('sideB'), 'active', G.phase === 'botFire' || G.phase === 'playerHide');
-    if (mode) {
-      var tot = mode === 'mode-aim' ? era.aimTime : era.botTime, tl = Math.max(0, G.timeLeft);
+    if (mode === 'mode-bot') { // the throw turn has no timer; only the bot's turn shows one
+      var tot = era.botTime, tl = Math.max(0, G.timeLeft);
       var w = (tl / tot).toFixed(3);
       if (hudCache.tw !== w) { hudCache.tw = w; $('timerBar').style.transform = 'scaleX(' + w + ')'; }
       setText('timerTxt', tl.toFixed(1));
@@ -1136,7 +1181,8 @@
   var bgEra = null;
   function setEra(era) {
     G.era = era;
-    if (bgEra !== era) { bgEra = era; buildScenery(); coverCache.clear(); buildBg(); }
+    if (bgEra !== era) { bgEra = era; buildScenery(); coverCache.clear(); resize(); }
+    placePlayer(Math.floor(pSlots().length / 2));
     $('avP').innerHTML = AVATARS[era.player.outfit === 'cave' ? 'cave' : 'modern'];
     $('avB').innerHTML = AVATARS[era.bot.look] || AVATARS.cactus;
     $('nmB').textContent = era.bot.name; $('oBn').textContent = era.bot.name.toUpperCase();
@@ -1156,18 +1202,31 @@
     G.fx = []; G.stuck = []; G.proj = []; G.botSpears = []; G.nearStuck = []; G.shotLog = []; G.botLog = []; G.result = null; G.lastReward = null;
     G.stats = { shots: 0, hits: 0, heads: 0, dodges: 0, botHits: 0 };
     G.enemy.dizzy = 0; G.enemy.throwT = 0;
+    placePlayer(Math.floor(pSlots().length / 2));
     hideOverlays();
     beginRound();
     return true;
   }
   function beginRound() {
     var e = G.enemy, prev = e.baseWx, nx, tries = 0, era = G.era;
-    var lane = era.lane || [-2.0, 2.4], sep = Math.min(1.4, (lane[1] - lane[0]) * 0.36);
-    do { nx = rr(lane[0], lane[1]); tries++; } while (Math.abs(nx - prev) < sep && tries < 20);
-    if (Math.abs(nx - prev) < sep) nx = Math.abs(lane[0] - prev) > Math.abs(lane[1] - prev) ? lane[0] : lane[1];
-    e.baseWx = nx; e.wx = nx; e.tx = nx; e.z = rr(era.dist[0], era.dist[1]); e.duck = 1; e.duckTarget = 1; e.flash = 0; e.hitT = 0; e.hatOff = 0; e.duckT = 0; e.dizzy = 0; e.throwT = 0;
+    var spots = era.cover.spots;
+    e.plan = null;
+    if (spots) {
+      // He starts behind the rock he was at, dashes (sometimes via a decoy rock) to a random rock, and peeks once before the cover drops.
+      var cur = nearestIdx(spots, e.wx), fin = Math.floor(rnd() * spots.length), t0 = rr(0.4, 0.8), plan = [];
+      if (fin === cur || rnd() < 0.5) { var dec; do { dec = Math.floor(rnd() * spots.length); } while (dec === cur || dec === fin); plan.push({ at: t0, to: dec }); t0 += rr(1.1, 1.5); }
+      plan.push({ at: t0, to: fin });
+      e.plan = plan; e.peekAt = rr(3.9, 4.2); e.slot = fin;
+      nx = spots[fin]; e.wx = e.tx = spots[cur];
+    } else {
+      var lane = era.lane || [-2.0, 2.4], sep = Math.min(1.4, (lane[1] - lane[0]) * 0.36);
+      do { nx = rr(lane[0], lane[1]); tries++; } while (Math.abs(nx - prev) < sep && tries < 20);
+      if (Math.abs(nx - prev) < sep) nx = Math.abs(lane[0] - prev) > Math.abs(lane[1] - prev) ? lane[0] : lane[1];
+      e.wx = nx; e.tx = nx;
+    }
+    e.baseWx = nx; e.z = rr(era.dist[0], era.dist[1]); e.duck = 1; e.duckTarget = 1; e.flash = 0; e.hitT = 0; e.hatOff = 0; e.duckT = 0; e.dizzy = 0; e.throwT = 0;
     G.coverH = era.cover.tall; G.coverT = 1; G.coverFrom = G.coverTo = era.cover.tall;
-    G.shotsP = CFG.shots; G.shotsB = CFG.shots; G.cool = 0; G.timeUp = false; G.tell = 0; G.botShots = []; G.ending = false;
+    G.shotsP = CFG.shots; G.shotsB = CFG.shots; G.cool = 0; G.tell = 0; G.botShots = []; G.ending = false;
     G.proj = []; G.botSpears = [];
     G.roundGain = { p: 0, b: 0 };
     G.scope = 0; G.scopeTarget = 0; G.pointerId = null; G.aiming = false;
@@ -1180,7 +1239,7 @@
   function startAim() {
     setPhase('aim'); showCount(0); G.countNum = 0;
     if (G.era.cover.low !== G.coverH) dropCover(G.era.cover.low);
-    G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.timeLeft = G.era.aimTime;
+    G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null;
     var cg = coverGeom(); G.aim.x = cg.x; G.aim.y = cg.top - 60;
     banner(G.era.shot.kind === 'arc' ? 'THROW!' : 'SHOOT!', 'go', 0.8); sfx.go();
   }
@@ -1231,7 +1290,7 @@
 
   // ---------- shooting ----------
   var projId = 0;
-  function canShoot() { return G.phase === 'aim' && G.shotsP > 0 && G.cool <= 0 && !G.ending && !G.timeUp && !G.ko; }
+  function canShoot() { return G.phase === 'aim' && G.shotsP > 0 && G.cool <= 0 && !G.ending && !G.ko; }
   function aimDir(sx, sy) {
     var O = launchOrigin(), D = G.enemy.z, P = { x: (sx - CX) * D / FOC, y: CAM_H - (sy - Y0) * D / FOC, z: D };
     var dx = P.x - O.x, dy = P.y - O.y, dz = P.z - O.z, L = Math.hypot(dx, dy, dz);
@@ -1259,15 +1318,19 @@
   }
   function stepProj(dt) {
     var e = G.enemy, co = G.era.cover, g = G.era.shot.g, zc = e.z - 0.7;
+    var cs = coverSpots();
     for (var i = G.proj.length - 1; i >= 0; i--) {
       var pr = G.proj[i], n = 4, h = dt / n, res = null, hit = null;
+      if (!pr) continue;  // a KO clears G.proj while we're iterating
       for (var j = 0; j < n && !res; j++) {
         var px = pr.x, py = pr.y, pz = pr.z, f, x, y;
         pr.vy -= g * h; pr.x += pr.vx * h; pr.y += pr.vy * h; pr.z += pr.vz * h; pr.t += h;
         if (pz < zc && pr.z >= zc) {
           f = (zc - pz) / (pr.z - pz); x = px + (pr.x - px) * f; y = py + (pr.y - py) * f;
-          var dx = x - e.baseWx;
-          if (Math.abs(dx) < co.halfW && y >= 0 && y < G.coverH * Math.sqrt(1 - (dx / co.halfW) * (dx / co.halfW))) { res = 'blocked'; hit = { x: x, y: y, z: zc - 0.05 }; }
+          for (var ci = 0; ci < cs.length && !res; ci++) {
+            var dx = x - cs[ci];
+            if (Math.abs(dx) < co.halfW && y >= 0 && y < G.coverH * Math.sqrt(1 - (dx / co.halfW) * (dx / co.halfW))) { res = 'blocked'; hit = { x: x, y: y, z: zc - 0.05 }; }
+          }
         }
         if (!res && pz < e.z && pr.z >= e.z) {
           f = (e.z - pz) / (pr.z - pz); x = px + (pr.x - px) * f; y = py + (pr.y - py) * f;
@@ -1332,12 +1395,17 @@
     G.shotsB--; s.fired = true;
     var b = G.bot;
     s.intent = G.botForce || (rnd() < b.acc ? (rnd() < b.head ? 'head' : 'hit') : 'miss');
+    if (multiSlot()) {
+      if (s.target == null) s.target = playerRockIdx();
+      var now = playerRockIdx(), B = BALANCE.bot;
+      if (now !== s.target && G.player.mt >= BALANCE.move.slide && G.player.settled >= B.retargetSettle && (G.botRetarget != null ? G.botRetarget : rnd() < B.retarget)) { s.target = now; s.retargeted = true; }
+    }
     var g = enemyGeom();
     if (G.era.shot.kind === 'arc') {
       sfx.throw();
-      var pc = playerCoverGeom(), x1, y1;
-      if (s.intent === 'miss') { x1 = PX + (rnd() < 0.5 ? -1 : 1) * rr(120, 170) * PS; y1 = PY - rr(10, 70) * PS; }
-      else { x1 = PX + rr(0, 40) * PS; y1 = pc.base - pc.tall + 12 * PS; }
+      var multi = multiSlot(), pc = multi ? playerCoverGeomAt(s.target) : playerCoverGeom(), ax = multi ? W * pSlots()[s.target] : PX, x1, y1;
+      if (s.intent === 'miss') { x1 = ax + (rnd() < 0.5 ? -1 : 1) * (multi ? rr(62, 80) : rr(120, 170)) * PS; y1 = PY - rr(10, 70) * PS; }
+      else { x1 = ax + rr(0, 40) * PS; y1 = pc.base - pc.tall + 12 * PS; }
       G.botSpears.push({ x0: g.hand.x, y0: g.hand.y, x1: x1, y1: y1, t: 0, dur: G.era.bot.flight, L0: 1.0 * g.s, L1: 150 * PS, shot: s });
       G.enemy.throwT = G.era.bot.flight + 0.35;
     } else {
@@ -1348,7 +1416,8 @@
   function resolveBot(s, sp) {
     if (s.done) return; s.done = true;
     var p = G.player, res = s.intent, pc = playerCoverGeom(), tx, ty;
-    if ((res === 'hit' || res === 'head') && p.duck >= 0.6) res = 'dodge';
+    if ((res === 'hit' || res === 'head') && multiSlot() && s.target != null && playerRockIdx() !== s.target) res = 'moved';
+    else if ((res === 'hit' || res === 'head') && p.duck >= 0.6) res = 'dodge';
     if (G.ko) res = 'miss';
     if (res === 'hit' || res === 'head') {
       var dmg = Math.round(G.bot.dmg * (res === 'head' ? BALANCE.headMult : 1));
@@ -1359,6 +1428,13 @@
       addFx({ k: 'txt', x: tx + 30, y: ty - 30, text: 'OUCH! -' + dmg, col: '#ff9aa8', size: 24, life: 1.0, layer: 'near' });
       sfx.ouch(); bump('hpBoxP');
       if (G.hpP <= 0) knockOut('player');
+    } else if (res === 'moved') {
+      G.stats.dodges++;
+      tx = sp ? sp.x : W * pSlots()[s.target]; ty = sp ? sp.y : pc.base - pc.tall;
+      G.nearStuck.push({ x: tx, y: ty, ang: -2.0, L: 150 * PS, w: 9 * PS, t: 0 });
+      puff(tx, ty, 30 * PS, 'near');
+      addFx({ k: 'txt', x: tx, y: ty - 26, text: 'MISSED ME!', col: '#a8ffb8', size: 24, life: 1.0, layer: 'near' });
+      sfx.thud();
     } else if (res === 'dodge') {
       G.stats.dodges++;
       tx = sp ? sp.x : pc.x - pc.w * 0.2; ty = pc.base - pc.tall + 14 * PS;
@@ -1389,7 +1465,13 @@
     var ag = era.agility;
     if (G.ko === 'bot') { e.duckTarget = 0; e.hitT = Math.max(e.hitT, 0.2); }
     else if (e.hitT > 0) { e.hitT -= dt; e.duckTarget = 1; if (e.hitT <= 0) { e.duckTarget = 0; e.actT = rr(0.5, 0.9); } }
-    else if (G.phase === 'enemyHide') e.duckTarget = 1;
+    else if (G.phase === 'enemyHide') {
+      if (e.plan) {
+        for (var q = 0; q < e.plan.length; q++) { var pl = e.plan[q]; if (!pl.go && G.pt >= pl.at) { pl.go = true; e.tx = era.cover.spots[pl.to]; } }
+        var running = Math.abs(e.wx - e.tx) > 0.04;
+        e.duckTarget = running ? 0.1 : (G.pt >= e.peekAt && G.pt < e.peekAt + 0.5 ? 0.4 : 1);
+      } else e.duckTarget = 1;
+    }
     else if (G.phase === 'aim' && G.coverT >= 1 && !G.freeze) {
       if (e.duckT > 0) { e.duckT -= dt; if (e.duckT <= 0) e.duckTarget = 0; }
       e.actT -= dt;
@@ -1405,7 +1487,8 @@
       if (e.actT <= 0) { e.tx = e.baseWx + rr(-0.7, 0.7); e.actT = rr(1.2, 2.2); }
     } else { e.duckTarget = 0; e.tx = approach(e.tx, e.baseWx, dt); }
     e.duck = approach(e.duck, e.duckTarget, dt * 6);
-    e.wx = approach(e.wx, e.tx, dt * (1.0 + 1.4 * ag));
+    e.wx = approach(e.wx, e.tx, dt * (G.phase === 'enemyHide' && e.plan ? era.hideRun : 1.0 + 1.4 * ag));
+    stepPlayerSlide(dt);
 
     // player duck / stamina
     p.flash = Math.max(0, p.flash - dt * 3.5); p.recoil = Math.max(0, p.recoil - dt * 5); p.hitT = Math.max(0, p.hitT - dt);
@@ -1450,10 +1533,9 @@
         break;
       }
       case 'aim':
-        G.timeLeft = era.aimTime - G.pt;
-        if (!bannerT) hint(G.shotsP > 0 && !G.timeUp ? era.hints.aim : '');
-        if (G.timeLeft <= 0 && !G.timeUp) { G.timeUp = true; releaseAim(); if (G.shotsP > 0) banner("TIME'S UP!", 'go', 1); }
-        if (!G.ending && (G.shotsP <= 0 || G.timeUp) && !G.proj.length) { G.ending = true; G.endT = 0.9; }
+        // No time limit: the throw turn ends only after the 3rd spear has landed and been resolved.
+        if (!bannerT) hint(G.shotsP > 0 ? era.hints.aim : '');
+        if (!G.ending && G.shotsP <= 0 && !G.proj.length) { G.ending = true; G.endT = 0.9; }
         if (G.ending) { G.endT -= dt; if (G.endT <= 0) endAim(); }
         break;
       case 'swap':
@@ -1465,7 +1547,7 @@
         var tl = 0;
         for (var j = 0; j < G.botShots.length; j++) {
           var s = G.botShots[j];
-          if (!s.told && G.pt >= s.tellAt) { s.told = true; sfx.glint(); }
+          if (!s.told && G.pt >= s.tellAt) { s.told = true; sfx.glint(); if (multiSlot()) s.target = playerRockIdx(); }
           if (s.told && !s.fired) tl = Math.max(tl, 0.55 + 0.45 * Math.sin((G.pt - s.tellAt) * 14));
           if (!s.fired && G.pt >= s.fireAt) botFire(s);
         }
@@ -1483,6 +1565,13 @@
   }
 
   // ---------- render ----------
+  // Ring = where the spear crosses the enemy's depth (or lands, if it falls short first). Follows the player's launch point.
+  function guideRing(sx, sy) {
+    var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed, g = G.era.shot.g, e = G.enemy;
+    var tz = d.z > 0.01 ? (e.z - O.z) / (d.z * v) : 3, ty = O.y + d.y * v * tz - 0.5 * g * tz * tz;
+    if (ty < 0) { var A = 0.5 * g, B = -d.y * v; tz = (-B + Math.sqrt(B * B + 4 * A * O.y)) / (2 * A); ty = 0.02; }
+    return proj(O.x + d.x * v * tz, ty, O.z + d.z * v * tz);
+  }
   function drawGuide(c, sx, sy) {
     var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed, g = G.era.shot.g, e = G.enemy, pts = [];
     for (var t = 0; t < 3; t += 0.035) {
@@ -1499,10 +1588,7 @@
       c.fillStyle = '#fff'; c.beginPath(); c.arc(q.x, q.y, r, 0, 7); c.fill();
     }
     if (G.era.shot.ring && pts.length > 2) {
-      // Ring = where the spear crosses the enemy's depth (or lands, if it falls short first).
-      var tz = d.z > 0.01 ? (e.z - O.z) / (d.z * v) : 3, ty = O.y + d.y * v * tz - 0.5 * g * tz * tz;
-      if (ty < 0) { var A = 0.5 * g, B = -d.y * v; tz = (-B + Math.sqrt(B * B + 4 * A * O.y)) / (2 * A); ty = 0.02; }
-      var end = proj(O.x + d.x * v * tz, ty, O.z + d.z * v * tz), rr2 = Math.max(9, 0.26 * end.s);
+      var end = guideRing(sx, sy), rr2 = Math.max(9, 0.26 * end.s);
       c.globalAlpha = 0.85; c.lineWidth = 2.5; c.strokeStyle = 'rgba(40,16,40,.55)'; c.beginPath(); c.arc(end.x, end.y + 1, rr2, 0, 7); c.stroke();
       c.strokeStyle = '#fff'; c.setLineDash([4, 4]); c.beginPath(); c.arc(end.x, end.y, rr2, 0, 7); c.stroke(); c.setLineDash([]);
     }
@@ -1517,8 +1603,12 @@
     drawFx(ctx, 'world');
     var pc = playerCoverGeom();
     if (G.era.cover.kind === 'halftone') { if (G.pcH > 1) drawCover(ctx, pc.x, pc.base, pc.w, G.pcH, DPR, true); }
+    else if (multiSlot()) { for (var pi = 0; pi < pSlots().length; pi++) { var pg = playerCoverGeomAt(pi); drawBigRock(ctx, pg.x, pg.base, 1, pg.w, pg.tall); } }
     else drawBigRock(ctx, pc.x, pc.base, 1, pc.w, pc.tall);
     drawPlayer(ctx);
+    if (G.phase === 'botFire' && multiSlot()) {  // telegraphed aim: which rock each wound-up spear is headed for
+      for (var bi = 0; bi < G.botShots.length; bi++) { var b = G.botShots[bi]; if (b.told && !b.done && b.target != null) drawTargetMarker(ctx, b.target, b.fired ? 0.45 : 0.95); }
+    }
     drawNearSpears(ctx);
     drawFx(ctx, 'near');
     if (G.era.shot.kind === 'hitscan') drawScope(ctx);
@@ -1548,7 +1638,8 @@
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     CX = W / 2; Y0 = H * 0.52; FOC = Math.min(W * 1.12, H * 0.56);
-    PS = Math.min(W / 390, H / 844) * 0.76; PX = W * 0.2; PY = H - Math.max(12, H * 0.015);
+    // With 3 rocks the player is drawn smaller and higher, leaving the bottom strip for the ◀ ▶ / DUCK controls.
+    PS = Math.min(W / 390, H / 844) * (multiSlot() ? 0.56 : 0.76); PX = W * G.player.xf; PY = multiSlot() ? H - Math.max(60, H * 0.085) : H - Math.max(12, H * 0.015);
     coverCache.clear();
     buildBg();
   }
@@ -1593,6 +1684,9 @@
   cv.addEventListener('pointerup', function (ev) { endPress(ev, true); });
   cv.addEventListener('pointercancel', function (ev) { endPress(ev, false); });
   cv.addEventListener('pointerleave', function (ev) { if (ev.pointerType === 'mouse') G.hover = null; });
+  [['leftBtn', -1], ['rightBtn', 1]].forEach(function (m) {
+    $(m[0]).addEventListener('pointerdown', function (ev) { audio(); ev.preventDefault(); ev.stopPropagation(); movePlayer(m[1]); });
+  });
   var db = $('duckBtn');
   db.addEventListener('pointerdown', function (ev) { audio(); ev.preventDefault(); G.btnDuck = true; try { db.setPointerCapture(ev.pointerId); } catch (e) {} });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (n) { db.addEventListener(n, function () { G.btnDuck = false; }); });
@@ -1601,6 +1695,8 @@
     if (ev.code === 'Space' || ev.code === 'ArrowDown' || ev.code === 'KeyS') { G.keyDuck = true; if (G.phase === 'botFire') ev.preventDefault(); }
     if (ev.code === 'Enter' && (G.phase === 'menu' || G.phase === 'over') && !$('shop').classList.contains('show')) startMatch(ERA_BY_ID[SAVE.last] && ERA_BY_ID[SAVE.last].built ? ERA_BY_ID[SAVE.last] : ERAS[0]);
     if (ev.code === 'KeyM') setMuted(!muted);
+    if (!ev.repeat && (ev.code === 'ArrowLeft' || ev.code === 'KeyA')) { movePlayer(-1); ev.preventDefault(); }
+    if (!ev.repeat && (ev.code === 'ArrowRight' || ev.code === 'KeyD')) { movePlayer(1); ev.preventDefault(); }
   });
   window.addEventListener('keyup', function (ev) { if (ev.code === 'Space' || ev.code === 'ArrowDown' || ev.code === 'KeyS') G.keyDuck = false; });
   window.addEventListener('blur', function () { G.keyDuck = G.btnDuck = G.ptrDuck = false; });
@@ -1824,6 +1920,18 @@
     setDmg: function (p, b) { G.dmgP = p; G.dmgB = b; },
     setRound: function (n) { G.round = n; },
     damage: function (head) { return playerDamage(!!head); }, maxHp: playerMaxHp, botStats: function () { return botStats(G.era, SAVE.trophies); },
+    move: function (d) { return movePlayer(d); }, place: function (i) { placePlayer(i); }, canMove: function () { return canMove(); },
+    player: function () { var p = G.player; return { slot: p.slot, rock: playerRockIdx(), xf: p.xf, x: PX, sliding: p.mt < BALANCE.move.slide, duck: p.duck }; },
+    enemySlot: function () { return G.enemy.slot; },
+    enemyRock: function (i) { var e = G.enemy, sp = G.era.cover.spots; e.slot = i; e.baseWx = e.wx = e.tx = sp[i]; e.plan = null; },
+    guideRing: function (x, y) { var r = guideRing(x, y); return { x: r.x, y: r.y }; },
+    launch: function () { return launchScreen(); },
+    rocks: function () {
+      var en = (G.era.cover.spots || []).map(function (wx, i) { var g = coverGeomAt(i); return { i: i, wx: wx, x: g.x, x0: g.x0, x1: g.x1, top: g.top, base: g.base }; });
+      var pl = pSlots().map(function (f, i) { var g = playerCoverGeomAt(i); return { i: i, x: W * f, x0: g.x - g.w / 2, x1: g.x + g.w / 2, top: g.base - g.tall, base: g.base }; });
+      return { enemy: en, player: pl };
+    },
+    botRetarget: function (v) { G.botRetarget = v == null ? null : !!v; },
     layout: function () { return { W: W, H: H, DPR: DPR, Y0: Y0, PX: PX, PY: PY, PS: PS }; }
   };
 

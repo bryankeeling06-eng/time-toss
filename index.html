@@ -10,10 +10,10 @@
 <meta name="application-name" content="Time Toss" />
 <meta name="theme-color" content="#3a2270" />
 <title>Time Toss: duel your way through history</title>
-<link rel="icon" href="icon.svg?v=1" type="image/svg+xml" />
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1" />
-<link rel="manifest" href="manifest.webmanifest?v=1" />
-<link rel="stylesheet" href="style.css?v=1" />
+<link rel="icon" href="icon.svg?v=3" type="image/svg+xml" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3" />
+<link rel="manifest" href="manifest.webmanifest?v=3" />
+<link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
 <div id="app">
@@ -39,6 +39,8 @@
   <div id="count" class="count"><span id="countNum">5</span></div>
   <div id="hint" class="hint"></div>
 
+  <div id="moveBar"><button id="leftBtn" class="mbtn" aria-label="Move left">◀</button><button id="rightBtn" class="mbtn" aria-label="Move right">▶</button></div>
+
   <div id="bottom">
     <div id="timer" class="timer"><i id="timerBar"></i><b id="timerTxt">8.0</b></div>
     <div id="bullets" class="bullets"></div>
@@ -56,9 +58,9 @@
         <small id="mBarLbl" class="tlbl"></small>
         <small id="mStreak" class="streakLine"></small>
       </div>
-      <p class="howto">Hold to aim <b>above</b> him, let go to throw. Hold <b>DUCK</b> when he winds up!</p>
+      <p class="howto">Hold to aim <b>above</b> him, let go to throw. When he winds up, slide <b>◀ ▶</b> to another rock or hold <b>DUCK</b>!</p>
       <ul class="rules">
-        <li>He hides <b>5 s</b>, then you get <b>3 throws</b>. Then you hide!</li>
+        <li>He hides behind one of <b>3 rocks</b> (watch him run!), then you get <b>3 throws</b>, no rush. Then you hide!</li>
         <li>Head hits do <b>double</b> damage</li>
         <li><b>KO</b> wins. Else most damage after <b>5 rounds</b> (tie: sudden death)</li>
       </ul>
@@ -111,6 +113,6 @@
     </div>
   </div>
 </div>
-<script src="game.js?v=1"></script>
+<script src="game.js?v=3"></script>
 </body>
 </html>

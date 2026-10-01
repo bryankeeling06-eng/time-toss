@@ -54,7 +54,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:none}
   padding:6px 12px;border-radius:999px;background:rgba(24,16,40,.6);pointer-events:none;opacity:0;transition:opacity .2s}
 .hint.show{opacity:1}
 
-#bottom{position:absolute;right:calc(var(--sr) + 12px);bottom:calc(var(--sb) + 14px);display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
+#bottom{position:absolute;right:calc(var(--sr) + 12px);bottom:calc(var(--sb) + 14px);display:flex;flex-direction:row;align-items:center;gap:10px;pointer-events:none}
 .timer{position:relative;width:118px;height:30px;border-radius:999px;background:rgba(24,16,40,.7);border:1px solid rgba(255,255,255,.3);overflow:hidden;display:none}
 .timer i{position:absolute;left:0;top:0;bottom:0;width:100%;background:linear-gradient(90deg,#ffb23f,#ffd23f);opacity:.9;transform-origin:left}
 .timer.low i{background:linear-gradient(90deg,#ff4d5e,#ff8a5e)}
@@ -63,16 +63,16 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:none}
 .bullets i{position:relative}
 
 .bullets i.used{opacity:.22;filter:grayscale(1)}
-.duck{display:none;position:relative;width:108px;height:108px;border-radius:50%;border:0;padding:0;background:radial-gradient(circle at 50% 40%,#ffe25e,#f3a91f);
+.duck{display:none;position:relative;width:88px;height:88px;border-radius:50%;border:0;padding:0;background:radial-gradient(circle at 50% 40%,#ffe25e,#f3a91f);
   box-shadow:0 6px 0 #b8741a,0 10px 18px rgba(0,0,0,.35);pointer-events:auto;font-size:20px;font-weight:900;color:#4a2c08;letter-spacing:.05em}
-.duck svg{position:absolute;inset:-7px;width:122px;height:122px;transform:rotate(-90deg)}
+.duck svg{position:absolute;inset:-7px;width:102px;height:102px;transform:rotate(-90deg)}
 .duck .ringBg{fill:none;stroke:rgba(24,16,40,.55);stroke-width:7}
 .duck .ring{fill:none;stroke:#3fe06a;stroke-width:7;stroke-linecap:round;stroke-dasharray:289;stroke-dashoffset:0}
 .duck.tired .ring{stroke:#ff4d5e}
 .duck.tired{filter:saturate(.4) brightness(.85)}
 .duck.down{transform:translateY(5px);box-shadow:0 1px 0 #b8741a,0 4px 10px rgba(0,0,0,.35)}
 .duck span{position:relative}
-.mode-aim .timer,.mode-bot .timer{display:block}
+.mode-bot .timer{display:block}
 .mode-aim .bullets{display:flex}
 .mode-bot .duck{display:block}
 
@@ -189,3 +189,11 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:none}
 .sbtn.eq{background:transparent;color:#8af0a0;border:1px solid #4fdc6a}
 .sbtn.lockd{background:rgba(0,0,0,.3);color:#c8b6e6;font-size:11px;max-width:96px}
 @media (max-height:760px){ .rules{font-size:13px;line-height:1.45} .howto{font-size:14px;margin-top:10px} .logo{font-size:44px} .tro{margin-top:8px;padding:8px 10px} .big{padding:12px;margin-top:12px} .endTitle{font-size:38px} }
+
+/* left/right movement between rocks */
+#moveBar{position:absolute;left:calc(var(--sl) + 12px);bottom:calc(var(--sb) + 14px);display:none;gap:12px;z-index:3}
+.can-move #moveBar{display:flex}
+.mbtn{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:rgba(24,16,40,.6);color:#fff;font-size:24px;line-height:1;padding:0;
+  box-shadow:0 4px 0 rgba(0,0,0,.35);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.mbtn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.mbtn.off{opacity:.35}
