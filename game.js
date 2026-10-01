@@ -241,7 +241,7 @@
     fx: [], shake: 0, freeze: false,
     lastShot: null, shotLog: [], botLog: [], roundGain: { p: 0, b: 0 },
     stats: { shots: 0, hits: 0, heads: 0, dodges: 0, botHits: 0 },
-    result: null, lastReward: null
+    result: null, lastReward: null, rewarded: false
   };
   // ---------- audio (WebAudio synth; resumes on first gesture for iOS) ----------
   var actx = null, master = null, noiseBuf = null;
@@ -1199,7 +1199,7 @@
     setEra(era);
     G.round = 1; G.sudden = 0; G.dmgP = 0; G.dmgB = 0; G.ko = null; G.koT = 0;
     G.maxP = playerMaxHp(); G.hpP = G.maxP; G.bot = botStats(era, SAVE.trophies); G.maxB = G.bot.hp; G.hpB = G.maxB;
-    G.fx = []; G.stuck = []; G.proj = []; G.botSpears = []; G.nearStuck = []; G.shotLog = []; G.botLog = []; G.result = null; G.lastReward = null;
+    G.fx = []; G.stuck = []; G.proj = []; G.botSpears = []; G.nearStuck = []; G.shotLog = []; G.botLog = []; G.result = null; G.lastReward = null; G.rewarded = false;
     G.stats = { shots: 0, hits: 0, heads: 0, dodges: 0, botHits: 0 };
     G.enemy.dizzy = 0; G.enemy.throwT = 0;
     placePlayer(Math.floor(pSlots().length / 2));
@@ -1276,10 +1276,15 @@
     banner(who === 'bot' ? 'KNOCKOUT!' : 'YOU GOT BONKED!', who === 'bot' ? 'good' : 'go'); hint('');
   }
   function matchOver(reason) {
+    // Reward exactly once per match. Opening SHOP / ERA MAP used to leave phase!='over'
+    // while G.ko was still set, so the tick re-entered matchOver and stacked trophies/streak.
+    if (G.rewarded) return;
+    G.rewarded = true;
     var result;
     if (reason === 'ko') result = G.ko === 'bot' ? 'win' : 'lose';
     else if (reason === 'points') result = G.dmgP > G.dmgB ? 'win' : 'lose';
     else result = 'draw';
+    G.ko = null; G.koT = 0;  // clear before leaving 'over' so shop/map cannot re-trigger
     setPhase('over'); banner(''); hint(''); showCount(0); releaseAim();
     G.result = result; G.reason = reason;
     var rw = matchReward(SAVE, G.era, result);
@@ -1522,7 +1527,7 @@
       if (bs.t >= bs.dur) { G.botSpears.splice(b, 1); resolveBot(bs.shot, { x: bs.x1, y: bs.y1 }); }
     }
 
-    if (G.ko) { G.koT -= dt; if (G.koT <= 0 && G.phase !== 'over') matchOver('ko'); return; }
+    if (G.ko) { G.koT -= dt; if (G.koT <= 0 && G.phase !== 'over' && !G.rewarded) matchOver('ko'); return; }
 
     switch (G.phase) {
       case 'enemyHide':
@@ -1765,7 +1770,7 @@
     $('eraTro').textContent = '🏆 ' + fmt(SAVE.trophies);
     $('eraHint').textContent = '';
   }
-  function showEraMap() { hideOverlays(); G.phase = 'menu'; banner(''); hint(''); showCount(0); renderEraMap(); $('eras').classList.add('show'); }
+  function showEraMap() { hideOverlays(); if (G.phase !== 'over') G.phase = 'menu'; banner(''); hint(''); showCount(0); renderEraMap(); $('eras').classList.add('show'); }
   function eraHint(msg) { var el = $('eraHint'); el.textContent = msg; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
   function tapEra(i) {
     var e = ERAS[i], th = BALANCE.trophies.thresholds;
@@ -1799,7 +1804,7 @@
     $('shopList').innerHTML = h;
   }
   function shopMsg(m) { var el = $('shopMsg'); el.textContent = m; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
-  function showShop(from) { shopFrom = from || 'menu'; hideOverlays(); G.phase = 'menu'; banner(''); hint(''); showCount(0); renderShop(); $('shopMsg').textContent = 'Pretend coins: earn them by playing matches.'; $('shop').classList.add('show'); }
+  function showShop(from) { shopFrom = from || 'menu'; hideOverlays(); if (from !== 'over' && G.phase !== 'over') G.phase = 'menu'; banner(''); hint(''); showCount(0); renderShop(); $('shopMsg').textContent = 'Pretend coins: earn them by playing matches.'; $('shop').classList.add('show'); }
   function findItem(kind, id) { var era = shopEra(), list = BALANCE[kind][era.id]; for (var i = 0; i < list.length; i++) if (list[i].id === id) return { it: list[i], list: list, era: era }; return null; }
   // Atomic purchase: build the new save, write it, and only then adopt it.
   function buyItem(kind, id) {
