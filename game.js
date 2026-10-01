@@ -23,7 +23,7 @@
     bot: {
       baseHealth: [100, 130, 170, 220, 280], healthPerTrophy: 0.05,
       baseDamage: [14, 18, 22, 28, 34], damagePerTrophy: 0.006,
-      baseAcc: [0.5, 0.52, 0.55, 0.58, 0.6], accPerTrophy: 0.00002, accMax: 0.7,
+      baseAcc: [0.65, 0.58, 0.6, 0.62, 0.64], accPerTrophy: 0.00002, accMax: 0.78,
       headShare: 0.15,
       // Wind-up aim: the bot aims at the rock you're at when it winds up. At release it re-aims at your new rock
       // with this chance, but only if you've already been standing there for retargetSettle seconds.
@@ -39,10 +39,10 @@
         { id: 'bonetip', name: 'Bone Tip', dmg: 30, cost: 350, tip: '#f4ecd6', steady: 0.15, note: '+50% damage, longer aim guide' },
         { id: 'obsidian', name: 'Obsidian Spear', dmg: 36, cost: 700, tip: '#3a2a4a', steady: 0.15, reload: 0.7, note: '+80% damage, longer guide, faster throws' }
       ],
-      castle: [{ id: 'bow0', name: 'Short Bow', dmg: 22, cost: 0 }, { id: 'longbow', name: 'Longbow', dmg: 28, cost: 400 }, { id: 'crossbow', name: 'Crossbow', dmg: 34, cost: 900, reload: 0.8 }],
-      wildwest: [{ id: 'musket0', name: 'Old Musket', dmg: 26, cost: 0 }, { id: 'brass', name: 'Brass Musket', dmg: 32, cost: 600 }, { id: 'cannon', name: 'Mini Cannon', dmg: 40, cost: 1200 }],
-      modern: [{ id: 'rifle0', name: 'Scout Rifle', dmg: 30, cost: 0 }, { id: 'scope', name: 'Pro Scope', dmg: 36, cost: 900, steady: 0.3 }, { id: 'marksman', name: 'Marksman Rifle', dmg: 44, cost: 1600 }],
-      space: [{ id: 'blaster0', name: 'Ray Blaster', dmg: 34, cost: 0 }, { id: 'plasma', name: 'Plasma Blaster', dmg: 42, cost: 1400 }, { id: 'nova', name: 'Nova Cannon', dmg: 50, cost: 2400, reload: 0.8 }]
+      castle: [{ id: 'bow0', name: 'Short Bow', dmg: 22, cost: 0, tip: '#c4c8d0', note: 'Starter bow' }, { id: 'longbow', name: 'Longbow', dmg: 28, cost: 400, tip: '#9aa0ac', steady: 0.1, note: '+damage, longer guide' }, { id: 'crossbow', name: 'Crossbow', dmg: 34, cost: 900, tip: '#6a7080', reload: 0.8, note: '+damage, faster reload' }],
+      wildwest: [{ id: 'musket0', name: 'Old Musket', dmg: 26, cost: 0, tip: '#5a4a3a', note: 'Slow and loud' }, { id: 'brass', name: 'Brass Musket', dmg: 32, cost: 600, tip: '#c9a24a', note: '+damage' }, { id: 'cannon', name: 'Mini Cannon', dmg: 40, cost: 1200, tip: '#3a3a3a', note: 'Big boom' }],
+      modern: [{ id: 'rifle0', name: 'Scout Rifle', dmg: 30, cost: 0, tip: '#3b3345', note: 'Hold to zoom' }, { id: 'scope', name: 'Pro Scope', dmg: 36, cost: 900, tip: '#2a2230', steady: 0.3, note: '+damage, steadier zoom' }, { id: 'marksman', name: 'Marksman Rifle', dmg: 44, cost: 1600, tip: '#1a1520', note: 'Hard-hitting' }],
+      space: [{ id: 'blaster0', name: 'Ray Blaster', dmg: 34, cost: 0, tip: '#39e0ff', note: 'Instant beam' }, { id: 'plasma', name: 'Plasma Blaster', dmg: 42, cost: 1400, tip: '#7af0ff', note: '+damage' }, { id: 'nova', name: 'Nova Cannon', dmg: 50, cost: 2400, tip: '#ff9aef', reload: 0.8, note: '+damage, faster fire' }]
     },
     // Outfits per era: hp = extra max health, dmgBonus = extra damage share.
     outfits: {
@@ -52,10 +52,26 @@
         { id: 'mammoth', name: 'Mammoth Fur Cloak', hp: 40, cost: 400, note: '+40 health', look: { tunic: '#e8962a', spot: '#7a3e16', spots: true, cloak: '#7a5236' } },
         { id: 'bonearmor', name: 'Bone Armor', hp: 60, dmgBonus: 0.1, cost: 800, note: '+60 health, +10% damage', look: { tunic: '#b86a2a', spot: '#6a3a16', spots: true, bones: true } }
       ],
-      castle: [{ id: 'tabard', name: 'Cloth Tabard', hp: 0, cost: 0 }, { id: 'leather', name: 'Leather Armor', hp: 30, cost: 500 }, { id: 'chain', name: 'Chain Mail', hp: 60, cost: 1100 }],
-      wildwest: [{ id: 'vest', name: 'Cowpoke Vest', hp: 0, cost: 0 }, { id: 'piratecoat', name: 'Pirate Coat', hp: 40, cost: 800 }, { id: 'duster', name: 'Iron Duster', hp: 70, dmgBonus: 0.1, cost: 1500 }],
-      modern: [{ id: 'fatigues', name: 'Desert Fatigues', hp: 0, cost: 0 }, { id: 'vestplate', name: 'Padded Vest', hp: 50, cost: 1200 }, { id: 'ghillie', name: 'Ghillie Suit', hp: 80, cost: 2000 }],
-      space: [{ id: 'jumpsuit', name: 'Jumpsuit', hp: 0, cost: 0 }, { id: 'spacesuit', name: 'Space Suit', hp: 60, cost: 1800 }, { id: 'mech', name: 'Mech Armor', hp: 100, dmgBonus: 0.1, cost: 3000 }]
+      castle: [
+        { id: 'tabard', name: 'Cloth Tabard', hp: 0, cost: 0, note: 'Simple cloth', look: { tunic: '#6a8cc8', spot: '#3a5a8a' } },
+        { id: 'leather', name: 'Leather Armor', hp: 30, cost: 500, note: '+30 health', look: { tunic: '#8a5a3a', spot: '#5a3a20', spots: true } },
+        { id: 'chain', name: 'Chain Mail', hp: 60, cost: 1100, note: '+60 health', look: { tunic: '#a8b0c0', spot: '#6a7080', bones: true } }
+      ],
+      wildwest: [
+        { id: 'vest', name: 'Cowpoke Vest', hp: 0, cost: 0, note: 'Dusty and proud', look: { tunic: '#b86a3a', spot: '#6a3a20' } },
+        { id: 'piratecoat', name: 'Duster Coat', hp: 40, cost: 800, note: '+40 health', look: { tunic: '#5a3a28', spot: '#3a2418', cloak: '#3a2418' } },
+        { id: 'duster', name: 'Iron Duster', hp: 70, dmgBonus: 0.1, cost: 1500, note: '+70 health, +10% damage', look: { tunic: '#4a4a55', spot: '#2a2a30', cloak: '#2a2a30', bones: true } }
+      ],
+      modern: [
+        { id: 'fatigues', name: 'Desert Fatigues', hp: 0, cost: 0, note: 'Sand-ready', look: { tunic: '#b8384b', spot: '#6a2030' } },
+        { id: 'vestplate', name: 'Padded Vest', hp: 50, cost: 1200, note: '+50 health', look: { tunic: '#5a6a4a', spot: '#3a4a2a', spots: true } },
+        { id: 'ghillie', name: 'Ghillie Suit', hp: 80, cost: 2000, note: '+80 health', look: { tunic: '#4a7a3a', spot: '#2a5a22', leaf: true } }
+      ],
+      space: [
+        { id: 'jumpsuit', name: 'Jumpsuit', hp: 0, cost: 0, note: 'Zero-G chic', look: { tunic: '#6a5ad0', spot: '#3a2a90' } },
+        { id: 'spacesuit', name: 'Space Suit', hp: 60, cost: 1800, note: '+60 health', look: { tunic: '#d0d8e8', spot: '#8890a0', cloak: '#a0b0d0' } },
+        { id: 'mech', name: 'Mech Armor', hp: 100, dmgBonus: 0.1, cost: 3000, note: '+100 health, +10% damage', look: { tunic: '#5a6a80', spot: '#2a3a50', bones: true, cloak: '#39e0ff' } }
+      ]
     }
   };
 
@@ -64,38 +80,45 @@
   // =====================================================================
   var ERAS = [
     { id: 'stone', name: 'Stone Age', weapon: 'Spear', built: true, scene: 'canyon',
-      // spots: world x of the enemy's 3 rocks. playerSpots: screen-width fractions of the player's 3 rocks.
       cover: { kind: 'rock', tall: 0.8, low: 0.8, halfW: 1.0, spots: [-2.4, 0, 2.4] },
-      playerSpots: [0.17, 0.5, 0.83], hideRun: 5,
+      playerSpots: [0.17, 0.5, 0.83], hideRun: 5, bannerHold: 2.2,
       shot: { kind: 'arc', speed: 7.6, g: 5, guide: 0.55, len: 0.9, cool: 0.6, ring: true },
       botTime: 8.5, dist: [8, 10], agility: 0.4,
       bot: { name: 'Ugga Bunga', look: 'caveman', tell: 'windup', flight: 0.75 },
       player: { outfit: 'cave' }, ammo: 'spear',
       hints: { aim: 'Find him, aim above him, let go to throw', bot: 'He aims at your rock: slide ◀ ▶ or DUCK!' } },
-    { id: 'castle', name: 'Castle', weapon: 'Bow & arrows', built: false, scene: 'castle',
-      cover: { kind: 'haystack', tall: 1.0, low: 1.0, halfW: 1.1 },
-      shot: { kind: 'arc', speed: 16, g: 7, guide: 0.35, len: 0.8, cool: 0.5 },
-      botTime: 8, dist: [11, 14], agility: 0.55,
-      bot: { name: 'Sir Wobblebottom', look: 'knight', tell: 'windup', flight: 0.6 }, player: { outfit: 'knight' }, ammo: 'arrow',
-      hints: { aim: 'Aim a little above, let go to shoot', bot: 'Hold DUCK when he draws!' } },
-    { id: 'wildwest', name: 'Wild West', weapon: 'Musket', built: false, scene: 'saloon',
-      cover: { kind: 'barrel', tall: 1.0, low: 1.0, halfW: 0.6 },
-      shot: { kind: 'arc', speed: 40, g: 3, guide: 0.2, len: 0.2, cool: 1.2 },
-      botTime: 7.5, dist: [12, 15], agility: 0.65,
-      bot: { name: 'Dusty Pete', look: 'bandit', tell: 'glint', flight: 0.3 }, player: { outfit: 'cowpoke' }, ammo: 'ball',
-      hints: { aim: 'Nearly straight shots, slow reload', bot: 'Hold DUCK when you see the glint!' } },
-    { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: false, scene: 'desert',
-      cover: { kind: 'halftone', tall: 2.3, low: 0.6, halfW: 1.3 },
+    { id: 'castle', name: 'Castle', weapon: 'Bow & arrows', built: true, scene: 'castle',
+      cover: { kind: 'haystack', tall: 1.0, low: 1.0, halfW: 1.0, spots: [-2.6, 0, 2.6] },
+      playerSpots: [0.17, 0.5, 0.83], hideRun: 5.5,
+      shot: { kind: 'arc', speed: 16, g: 7, guide: 0.4, len: 0.75, cool: 0.5, ring: true },
+      botTime: 8, dist: [10, 13], agility: 0.55,
+      bot: { name: 'Sir Wobblebottom', look: 'knight', tell: 'windup', flight: 0.55 },
+      player: { outfit: 'knight' }, ammo: 'arrow',
+      hints: { aim: 'Aim a little above, let go to shoot', bot: 'He aims at your hay: slide ◀ ▶ or DUCK!' } },
+    { id: 'wildwest', name: 'Wild West', weapon: 'Musket', built: true, scene: 'saloon',
+      cover: { kind: 'barrel', tall: 1.0, low: 1.0, halfW: 0.7, spots: [-2.5, 0, 2.5] },
+      playerSpots: [0.17, 0.5, 0.83], hideRun: 6,
+      shot: { kind: 'arc', speed: 40, g: 3, guide: 0.22, len: 0.25, cool: 1.2, ring: true },
+      botTime: 7.5, dist: [11, 14], agility: 0.65,
+      bot: { name: 'Dusty Pete', look: 'bandit', tell: 'glint', flight: 0.28 },
+      player: { outfit: 'cowpoke' }, ammo: 'ball',
+      hints: { aim: 'Nearly straight shots, slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
+    { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: true, scene: 'desert',
+      cover: { kind: 'halftone', tall: 2.3, low: 0.7, halfW: 1.15, spots: [-2.5, 0, 2.5] },
+      playerSpots: [0.17, 0.5, 0.83], hideRun: 6.5,
       shot: { kind: 'hitscan', zoom: 2.3, sens: 1.25, cool: 0.45 },
       botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
-      bot: { name: 'Sgt. Cactus', look: 'cactus', tell: 'glint', flight: 0 }, player: { outfit: 'modern' }, ammo: 'bullet',
-      hints: { aim: 'Drag to aim · hold to zoom · let go to fire', bot: 'Hold DUCK when you see the glint!' } },
-    { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: false, scene: 'moon',
-      cover: { kind: 'shield', tall: 1.2, low: 1.2, halfW: 1.0, blockChance: 0.3 },
+      bot: { name: 'Sgt. Cactus', look: 'cactus', tell: 'glint', flight: 0 },
+      player: { outfit: 'modern' }, ammo: 'bullet',
+      hints: { aim: 'Drag to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
+    { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: true, scene: 'moon',
+      cover: { kind: 'shield', tall: 1.25, low: 1.25, halfW: 1.0, spots: [-2.4, 0, 2.4], blockChance: 0.35 },
+      playerSpots: [0.17, 0.5, 0.83], hideRun: 7,
       shot: { kind: 'hitscan', zoom: 1.6, sens: 1.1, cool: 0.35 },
-      botTime: 7, dist: [10, 13], agility: 0.9,
-      bot: { name: 'Zorp', look: 'alien', tell: 'glint', flight: 0 }, player: { outfit: 'space' }, ammo: 'cell',
-      hints: { aim: 'Instant laser! Watch his shield', bot: 'Hold DUCK when his blaster glows!' } }
+      botTime: 7, dist: [10, 12.5], agility: 0.9,
+      bot: { name: 'Zorp', look: 'alien', tell: 'glint', flight: 0 },
+      player: { outfit: 'space' }, ammo: 'cell',
+      hints: { aim: 'Instant laser! His shield can block', bot: 'Blaster glow: slide ◀ ▶ or DUCK!' } }
   ];
   var ERA_BY_ID = {}; ERAS.forEach(function (e, i) { e.idx = i; ERA_BY_ID[e.id] = e; });
 
@@ -124,12 +147,12 @@
   // =====================================================================
   // SAVE (versioned key, safe parsing, atomic writes)
   // =====================================================================
-  var SAVE_KEY = 'timetoss_save_v1';
+  var SAVE_KEY = 'timetoss_save_v2';
   var failWrites = false, saveWasCorrupt = false;
   function allIds(kind) { var o = {}; Object.keys(BALANCE[kind]).forEach(function (era) { BALANCE[kind][era].forEach(function (it) { o[it.id] = { era: era, item: it }; }); }); return o; }
   var WEAPON_IDS = allIds('weapons'), OUTFIT_IDS = allIds('outfits');
   function defaultSave() {
-    var s = { v: 1, trophies: 0, unlocked: 0, coins: 0, owned: { weapons: [], outfits: [] }, equip: { weapons: {}, outfits: {} },
+    var s = { v: 2, trophies: 0, unlocked: 0, coins: 0, owned: { weapons: [], outfits: [] }, equip: { weapons: {}, outfits: {} },
       stats: { matches: 0, wins: 0, losses: 0, draws: 0 }, streak: 0, bestStreak: 0, muted: false, last: 'stone' };
     ['weapons', 'outfits'].forEach(function (k) {
       Object.keys(BALANCE[k]).forEach(function (era) {
@@ -141,7 +164,7 @@
   }
   function num(x, lo, hi, def) { return (typeof x === 'number' && isFinite(x)) ? clamp(Math.floor(x), lo, hi) : def; }
   function sanitize(o) {
-    if (!o || typeof o !== 'object' || o.v !== 1) return null;
+    if (!o || typeof o !== 'object' || o.v !== 2) return null;
     var d = defaultSave(), th = BALANCE.trophies.thresholds;
     d.coins = num(o.coins, 0, 1e7, 0);
     // Unlocks are derived from trophies (never trusted from the stored field); the era floor keeps them consistent.
@@ -307,7 +330,8 @@
   function buildScenery() {
     var s0 = seedState; setSeed(7);
     props = []; clouds = [];
-    if (G.era.scene === 'desert') {
+    var sc = G.era.scene;
+    if (sc === 'desert') {
       props = [
         { t: 'palm', wx: -4.6, z: 13 }, { t: 'palm', wx: -3.2, z: 27 }, { t: 'palm', wx: 5.4, z: 21 },
         { t: 'palm', wx: 1.6, z: 95 }, { t: 'palm', wx: -1.2, z: 75 }, { t: 'palm', wx: 9, z: 60 },
@@ -316,13 +340,32 @@
         { t: 'cactus', wx: -5.2, z: 17 }, { t: 'cactus', wx: 6.2, z: 30 }
       ];
       for (var i = 0; i < 16; i++) props.push({ t: rnd() < 0.5 ? 'bush' : 'rock', wx: rr(-12, 12), z: rr(22, 90) });
+    } else if (sc === 'castle') {
+      props = [
+        { t: 'tree', wx: -5.2, z: 14 }, { t: 'tree', wx: 5.5, z: 18 }, { t: 'tree', wx: -3.0, z: 28 }, { t: 'tree', wx: 4.0, z: 36 },
+        { t: 'bush', wx: -2.2, z: 9 }, { t: 'bush', wx: 3.4, z: 11 }, { t: 'flag', wx: 0.2, z: 55 }
+      ];
+      for (var j = 0; j < 10; j++) props.push({ t: 'boulder', wx: rr(-9, 9), z: rr(20, 70) });
+    } else if (sc === 'saloon') {
+      props = [
+        { t: 'cactus', wx: -4.5, z: 12 }, { t: 'cactus', wx: 5.0, z: 16 }, { t: 'cactus', wx: -2.8, z: 30 },
+        { t: 'cactus', wx: 3.6, z: 40 }, { t: 'palm', wx: -6, z: 50 }, { t: 'palm', wx: 7, z: 55 },
+        { t: 'saloon', wx: 0, z: 48 }
+      ];
+      for (var k = 0; k < 12; k++) props.push({ t: rnd() < 0.5 ? 'bush' : 'rock', wx: rr(-11, 11), z: rr(18, 80) });
+    } else if (sc === 'moon') {
+      props = [
+        { t: 'crater', wx: -3.5, z: 16 }, { t: 'crater', wx: 4.2, z: 22 }, { t: 'crater', wx: 0.5, z: 40 },
+        { t: 'dome', wx: -5.5, z: 55 }, { t: 'dome', wx: 6.0, z: 62 }, { t: 'antenna', wx: 2.2, z: 70 }
+      ];
+      for (var m = 0; m < 14; m++) props.push({ t: 'boulder', wx: rr(-10, 10), z: rr(18, 85) });
     } else {
       props = [
         { t: 'cycad', wx: -4.0, z: 11 }, { t: 'cycad', wx: 4.6, z: 12.5 }, { t: 'cycad', wx: -2.6, z: 24 }, { t: 'cycad', wx: 3.2, z: 28 },
         { t: 'cycad', wx: 6.5, z: 38 }, { t: 'cycad', wx: -6, z: 34 }, { t: 'fern', wx: -3.3, z: 7.5 }, { t: 'fern', wx: 4.1, z: 8.2 },
         { t: 'fern', wx: 2.2, z: 18 }, { t: 'fern', wx: -1.6, z: 30 }
       ];
-      for (var j = 0; j < 14; j++) props.push({ t: 'boulder', wx: rr(-10, 10), z: rr(16, 70) });
+      for (var n = 0; n < 14; n++) props.push({ t: 'boulder', wx: rr(-10, 10), z: rr(16, 70) });
     }
     props.sort(function (a, b) { return b.z - a.z; });
     for (var k = 0; k < 8; k++) clouds.push({ x: rr(-0.2, 1.1), y: rr(0.08, 0.75), w: rr(0.35, 0.8), h: rr(0.035, 0.07), k: k % 3 });
@@ -537,7 +580,102 @@
       else drawBush(c, q.x, q.y, q.s, p.t === 'rock');
     }
   }
-  function drawWorld(c) { if (G.era.scene === 'desert') drawDesert(c); else drawCanyon(c); }
+  function drawCastle(c) {
+    var g = c.createLinearGradient(0, 0, 0, Y0);
+    g.addColorStop(0, '#6eb6ef'); g.addColorStop(0.55, '#a8d8f5'); g.addColorStop(1, '#d9f0ff');
+    c.fillStyle = g; c.fillRect(-W, -H, W * 3, Y0 + H + 1);
+    drawClouds(c, ['rgba(255,255,255,.75)', 'rgba(240,248,255,.55)', 'rgba(220,235,250,.4)']);
+    // distant castle keep
+    c.fillStyle = '#b0a898';
+    c.fillRect(W * 0.58, Y0 - H * 0.16, W * 0.22, H * 0.16);
+    c.fillRect(W * 0.56, Y0 - H * 0.2, W * 0.05, H * 0.05);
+    c.fillRect(W * 0.66, Y0 - H * 0.22, W * 0.05, H * 0.07);
+    c.fillRect(W * 0.76, Y0 - H * 0.2, W * 0.05, H * 0.05);
+    c.fillStyle = '#8a7a68'; c.fillRect(W * 0.67, Y0 - H * 0.1, W * 0.04, H * 0.1);
+    c.fillStyle = '#e8434a'; c.beginPath(); c.moveTo(W * 0.685, Y0 - H * 0.24); c.lineTo(W * 0.72, Y0 - H * 0.2); c.lineTo(W * 0.685, Y0 - H * 0.2); c.fill();
+    // meadow ground
+    var gg = c.createLinearGradient(0, Y0, 0, H);
+    gg.addColorStop(0, '#8fd06a'); gg.addColorStop(0.35, '#6ab04c'); gg.addColorStop(1, '#4a8a38');
+    c.fillStyle = gg; c.fillRect(-W, Y0, W * 3, H * 2);
+    c.fillStyle = 'rgba(255,255,200,.2)';
+    c.beginPath(); c.ellipse(W * 0.4, Y0 + H * 0.08, W * 0.5, H * 0.03, 0, 0, 7); c.fill();
+    for (var k = 0; k < props.length; k++) {
+      var p = props[k], q = proj(p.wx, 0, p.z);
+      if (q.x < -W * 0.5 || q.x > W * 1.5) continue;
+      if (p.t === 'tree') {
+        c.fillStyle = '#6a4a28'; c.fillRect(q.x - 0.08 * q.s, q.y - 1.6 * q.s, 0.16 * q.s, 1.6 * q.s);
+        c.fillStyle = '#3f9a3c'; c.beginPath(); c.arc(q.x, q.y - 1.8 * q.s, 0.7 * q.s, 0, 7); c.arc(q.x - 0.4 * q.s, q.y - 1.4 * q.s, 0.5 * q.s, 0, 7); c.arc(q.x + 0.4 * q.s, q.y - 1.4 * q.s, 0.5 * q.s, 0, 7); c.fill();
+      } else if (p.t === 'bush') drawBush(c, q.x, q.y, q.s, false);
+      else if (p.t === 'flag') { c.fillStyle = '#888'; c.fillRect(q.x, q.y - 2.2 * q.s, 0.06 * q.s, 2.2 * q.s); c.fillStyle = '#e8434a'; c.beginPath(); c.moveTo(q.x + 0.06 * q.s, q.y - 2.2 * q.s); c.lineTo(q.x + 0.7 * q.s, q.y - 2.0 * q.s); c.lineTo(q.x + 0.06 * q.s, q.y - 1.8 * q.s); c.fill(); }
+      else drawBoulder(c, q.x, q.y, q.s, 0.8, 0.4, '#a89880', '#887868');
+    }
+  }
+  function drawSaloon(c) {
+    var g = c.createLinearGradient(0, 0, 0, Y0);
+    g.addColorStop(0, '#4a70a8'); g.addColorStop(0.45, '#c8a06a'); g.addColorStop(1, '#f0c078');
+    c.fillStyle = g; c.fillRect(-W, -H, W * 3, Y0 + H + 1);
+    c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(CX + W * 0.15, Y0, W * 0.08, Math.PI, 0); c.fill();
+    drawClouds(c, ['rgba(255,240,220,.45)', 'rgba(240,200,160,.35)', 'rgba(220,160,120,.3)']);
+    // dusty ground
+    var gg = c.createLinearGradient(0, Y0, 0, H);
+    gg.addColorStop(0, '#e8c090'); gg.addColorStop(0.3, '#d9a066'); gg.addColorStop(1, '#b87840');
+    c.fillStyle = gg; c.fillRect(-W, Y0, W * 3, H * 2);
+    for (var k = 0; k < props.length; k++) {
+      var p = props[k], q = proj(p.wx, 0, p.z);
+      if (q.x < -W * 0.5 || q.x > W * 1.5) continue;
+      if (p.t === 'saloon') {
+        var s = q.s;
+        c.fillStyle = '#a0663a'; c.fillRect(q.x - 1.6 * s, q.y - 2.2 * s, 3.2 * s, 2.2 * s);
+        c.fillStyle = '#5a3a20'; c.fillRect(q.x - 1.8 * s, q.y - 2.5 * s, 3.6 * s, 0.35 * s);
+        c.fillStyle = '#3a2418'; c.fillRect(q.x - 0.35 * s, q.y - 1.1 * s, 0.7 * s, 1.1 * s);
+        c.fillStyle = '#ffe08a'; c.font = '900 ' + Math.round(0.35 * s) + 'px sans-serif'; c.textAlign = 'center';
+        c.fillText('SALOON', q.x, q.y - 1.7 * s);
+      } else if (p.t === 'cactus') drawSaguaro(c, q.x, q.y, q.s);
+      else if (p.t === 'palm') drawPalm(c, q.x, q.y, q.s);
+      else drawBush(c, q.x, q.y, q.s, p.t === 'rock');
+    }
+  }
+  function drawMoon(c) {
+    var g = c.createLinearGradient(0, 0, 0, Y0);
+    g.addColorStop(0, '#0a0820'); g.addColorStop(0.4, '#1a1740'); g.addColorStop(0.75, '#2a2060'); g.addColorStop(1, '#3a3080');
+    c.fillStyle = g; c.fillRect(-W, -H, W * 3, Y0 + H + 1);
+    // stars
+    c.fillStyle = '#fff';
+    for (var i = 0; i < 40; i++) { var sx = ((i * 97) % 100) / 100 * W, sy = ((i * 53) % 100) / 100 * Y0 * 0.85; c.beginPath(); c.arc(sx, sy, 1 + (i % 3) * 0.4, 0, 7); c.fill(); }
+    // earth
+    c.fillStyle = '#4a90d0'; c.beginPath(); c.arc(W * 0.78, Y0 * 0.22, W * 0.06, 0, 7); c.fill();
+    c.fillStyle = '#3a8a4a'; c.beginPath(); c.ellipse(W * 0.77, Y0 * 0.21, W * 0.025, W * 0.015, 0.4, 0, 7); c.fill();
+    // ground
+    var gg = c.createLinearGradient(0, Y0, 0, H);
+    gg.addColorStop(0, '#9aa0b8'); gg.addColorStop(0.4, '#7a8098'); gg.addColorStop(1, '#5a6078');
+    c.fillStyle = gg; c.fillRect(-W, Y0, W * 3, H * 2);
+    c.fillStyle = 'rgba(200,210,255,.15)';
+    c.beginPath(); c.ellipse(W * 0.5, Y0 + H * 0.1, W * 0.6, H * 0.04, 0, 0, 7); c.fill();
+    for (var k = 0; k < props.length; k++) {
+      var p = props[k], q = proj(p.wx, 0, p.z);
+      if (q.x < -W * 0.5 || q.x > W * 1.5) continue;
+      if (p.t === 'crater') {
+        c.fillStyle = 'rgba(40,40,60,.35)'; c.beginPath(); c.ellipse(q.x, q.y, 0.9 * q.s, 0.25 * q.s, 0, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(60,60,80,.5)'; c.lineWidth = 2; c.beginPath(); c.ellipse(q.x, q.y, 0.9 * q.s, 0.25 * q.s, 0, 0, 7); c.stroke();
+      } else if (p.t === 'dome') {
+        c.fillStyle = 'rgba(180,200,255,.35)'; c.beginPath(); c.arc(q.x, q.y, 0.9 * q.s, Math.PI, 0); c.fill();
+        c.strokeStyle = '#39e0ff'; c.lineWidth = 2; c.stroke();
+        c.fillStyle = '#6a7088'; c.fillRect(q.x - 0.9 * q.s, q.y - 0.05 * q.s, 1.8 * q.s, 0.15 * q.s);
+      } else if (p.t === 'antenna') {
+        c.strokeStyle = '#c0c8d8'; c.lineWidth = Math.max(1, 0.05 * q.s);
+        c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x, q.y - 2.4 * q.s); c.stroke();
+        c.fillStyle = '#39e0ff'; c.beginPath(); c.arc(q.x, q.y - 2.4 * q.s, 0.12 * q.s, 0, 7); c.fill();
+      } else drawBoulder(c, q.x, q.y, q.s, 0.7, 0.35, '#8a90a8', '#6a7088');
+    }
+  }
+  function drawWorld(c) {
+    var sc = G.era.scene;
+    if (sc === 'desert') drawDesert(c);
+    else if (sc === 'castle') drawCastle(c);
+    else if (sc === 'saloon') drawSaloon(c);
+    else if (sc === 'moon') drawMoon(c);
+    else drawCanyon(c);
+  }
   function buildBg() {
     bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
     bgc.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -552,6 +690,48 @@
     c.moveTo(x + hw * 0.55, base - hh * 0.5); c.lineTo(x + hw * 0.7, base - hh * 0.25); c.stroke();
     c.fillStyle = '#7fa04a'; c.beginPath(); c.ellipse(x - hw * 0.6, base - hh * 0.55, hw * 0.12, hh * 0.07, 0.3, 0, 7); c.ellipse(x + hw * 0.2, base - hh * 0.97, hw * 0.1, hh * 0.05, 0, 0, 7); c.fill();
   }
+  function drawHaystack(c, x, base, s, w, h) {
+    var hw = w * s / 2, hh = h * s;
+    c.fillStyle = 'rgba(80,60,20,.25)'; c.beginPath(); c.ellipse(x, base, hw * 1.1, hh * 0.15, 0, 0, 7); c.fill();
+    c.fillStyle = '#e8c04a'; c.beginPath();
+    c.moveTo(x - hw, base); c.quadraticCurveTo(x - hw * 1.05, base - hh * 0.55, x - hw * 0.3, base - hh);
+    c.quadraticCurveTo(x, base - hh * 1.08, x + hw * 0.3, base - hh);
+    c.quadraticCurveTo(x + hw * 1.05, base - hh * 0.55, x + hw, base); c.closePath(); c.fill();
+    c.fillStyle = '#c9a038'; c.beginPath(); c.ellipse(x + hw * 0.15, base - hh * 0.45, hw * 0.55, hh * 0.35, 0.2, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(120,80,20,.45)'; c.lineWidth = Math.max(1, s * 0.025);
+    for (var i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(x + i * hw * 0.22, base - 2); c.quadraticCurveTo(x + i * hw * 0.18, base - hh * 0.5, x + i * hw * 0.1, base - hh * 0.92); c.stroke(); }
+  }
+  function drawBarrel(c, x, base, s, w, h) {
+    var hw = w * s / 2, hh = h * s, r = hw * 0.95;
+    c.fillStyle = 'rgba(60,30,10,.3)'; c.beginPath(); c.ellipse(x, base, r * 1.15, hh * 0.12, 0, 0, 7); c.fill();
+    c.fillStyle = '#8a5a2a'; c.beginPath(); c.ellipse(x, base - hh * 0.5, r, hh * 0.55, 0, 0, 7); c.fill();
+    c.fillStyle = '#a06a38'; c.beginPath(); c.ellipse(x, base - hh, r * 0.92, hh * 0.14, 0, 0, 7); c.fill();
+    c.fillStyle = '#6a4020'; c.beginPath(); c.ellipse(x, base - 2, r * 0.95, hh * 0.12, 0, 0, 7); c.fill();
+    c.strokeStyle = '#3a2410'; c.lineWidth = Math.max(1.5, s * 0.04);
+    c.beginPath(); c.ellipse(x, base - hh * 0.28, r * 0.98, hh * 0.12, 0, 0, 7); c.stroke();
+    c.beginPath(); c.ellipse(x, base - hh * 0.72, r * 0.95, hh * 0.11, 0, 0, 7); c.stroke();
+    c.fillStyle = 'rgba(255,220,160,.25)'; c.beginPath(); c.ellipse(x - r * 0.35, base - hh * 0.55, r * 0.2, hh * 0.35, 0, 0, 7); c.fill();
+  }
+  function drawShieldPad(c, x, base, s, w, h) {
+    var hw = w * s / 2, hh = h * s;
+    c.save();
+    c.fillStyle = 'rgba(57,224,255,.12)'; c.beginPath(); c.ellipse(x, base - hh * 0.5, hw * 1.15, hh * 0.7, 0, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(57,224,255,.85)'; c.lineWidth = Math.max(2, s * 0.05);
+    c.beginPath(); c.moveTo(x - hw, base); c.quadraticCurveTo(x - hw * 1.05, base - hh * 0.55, x, base - hh);
+    c.quadraticCurveTo(x + hw * 1.05, base - hh * 0.55, x + hw, base); c.stroke();
+    c.strokeStyle = 'rgba(180,140,255,.7)'; c.lineWidth = Math.max(1.5, s * 0.03);
+    c.beginPath(); c.ellipse(x, base - hh * 0.45, hw * 0.7, hh * 0.4, 0, 0, 7); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(x, base - hh * 0.55, Math.max(3, s * 0.08), 0, 7); c.fill();
+    c.restore();
+  }
+  function drawEraCover(c, x, base, s, w, h, kind) {
+    if (kind === 'haystack') drawHaystack(c, x, base, s, w, h);
+    else if (kind === 'barrel') drawBarrel(c, x, base, s, w, h);
+    else if (kind === 'shield') drawShieldPad(c, x, base, s, w, h);
+    else if (kind === 'halftone') drawCover(c, x, base, w * s, h * s, DPR, true);
+    else drawBigRock(c, x, base, s, w, h);
+  }
+
 
   // ---------- enemy ----------
   function coverGeom() {
@@ -780,7 +960,45 @@
       drawSpear3D(c, pr, { x: pr.vx / sp, y: pr.vy / sp, z: pr.vz / sp }, G.era.shot.len, tip, 1, false);
     }
   }
+
+  var PAL_KN = { skin: '#e8a878', skin2: '#cf8a5c', hair: '#3a3a3a', tunic: '#c0c8d4', spot: '#8890a0', fur: '#6a7080', wood: '#a0663a', stone: '#d0d4dc',
+    boot: '#3a3a3a', belt: '#5a4030', eye: '#1d1a24' };
+  var PAL_BD = { skin: '#d8a070', skin2: '#b88058', hair: '#2a1810', tunic: '#5a3a28', spot: '#3a2418', fur: '#3a2418', wood: '#5a4030', stone: '#888',
+    boot: '#2a1810', belt: '#c9a24a', eye: '#1d1a24' };
+  var PAL_AL = { skin: '#b8f0a0', skin2: '#8ad070', hair: '#4a2080', tunic: '#6a40c0', spot: '#3a2080', fur: '#39e0ff', wood: '#39e0ff', stone: '#d0ff90',
+    boot: '#2a1840', belt: '#ff9aef', eye: '#1d1a24' };
+  function drawKnight(c, P, windup, hurt) {
+    drawCaveman(c, P, windup, hurt, false);
+    // helm visor overlay
+    c.fillStyle = P.stone || '#c0c8d4'; c.beginPath(); c.ellipse(0, -1.55, 0.42, 0.38, 0, 0, 7); c.fill();
+    c.fillStyle = 'rgba(20,20,30,.55)'; c.fillRect(-0.28, -1.58, 0.56, 0.12);
+    if (windup) { c.strokeStyle = P.wood; c.lineWidth = 0.08; c.beginPath(); c.moveTo(0.35, -0.9); c.lineTo(0.9, -1.6); c.stroke();
+      c.fillStyle = '#ccc'; c.beginPath(); c.moveTo(0.85, -1.65); c.lineTo(1.05, -1.55); c.lineTo(0.9, -1.4); c.fill(); }
+  }
+  function drawBandit(c, P, aiming, hurt) {
+    drawCactusMan(c, {
+      g: P.tunic, g2: P.spot, hi: P.skin, hat: '#3a2418', brim: '#2a1810', band: '#c9a24a',
+      boot: P.boot || '#2a1810', eye: '#fff', pupil: '#1d1a24', gun: '#3b3345', mouth: P.skin2
+    }, aiming, true, hurt);
+  }
+  function drawAlien(c, P, aiming, hurt) {
+    c.save();
+    // big head
+    c.fillStyle = P.skin; c.beginPath(); c.ellipse(0, -1.5, 0.55, 0.65, 0, 0, 7); c.fill();
+    c.fillStyle = '#1d1a24'; c.beginPath(); c.ellipse(-0.22, -1.55, 0.14, 0.22, -0.2, 0, 7); c.ellipse(0.22, -1.55, 0.14, 0.22, 0.2, 0, 7); c.fill();
+    c.fillStyle = '#39e0ff'; c.beginPath(); c.arc(-0.22, -1.55, 0.05, 0, 7); c.arc(0.22, -1.55, 0.05, 0, 7); c.fill();
+    // body
+    c.fillStyle = P.tunic; c.beginPath(); c.moveTo(-0.35, -0.85); c.lineTo(-0.4, 0); c.lineTo(0.4, 0); c.lineTo(0.35, -0.85); c.closePath(); c.fill();
+    c.fillStyle = P.fur; c.fillRect(-0.2, -0.5, 0.4, 0.08);
+    if (aiming) {
+      c.fillStyle = P.wood; c.fillRect(0.25, -1.0, 0.55, 0.12);
+      c.fillStyle = '#ff9aef'; c.beginPath(); c.arc(0.85, -0.94, 0.08, 0, 7); c.fill();
+    }
+    if (hurt) { c.strokeStyle = '#fff'; c.lineWidth = 0.04; c.beginPath(); c.arc(0.15, -1.7, 0.08, 0, 7); c.stroke(); }
+    c.restore();
+  }
   function enemyAiming() { return G.phase === 'playerHide' || G.phase === 'botFire' || G.phase === 'swap'; }
+
   function drawEnemyLayer(c, res) {
     var e = G.enemy, g = enemyGeom(), cg = g.cover, era = G.era;
     if (era.shot.kind === 'arc') drawWorldSpears(c, function (z) { return z > e.z; });
@@ -789,19 +1007,34 @@
     c.beginPath(); c.rect(g.x - 3 * g.s, g.foot - 3 * g.s, 6 * g.s, 3 * g.s); c.clip();
     c.translate(g.x, g.foot + g.sink * g.s); c.scale(g.s, g.s);
     var hurt = e.hitT > 0 || G.ko === 'bot';
-    if (era.bot.look === 'cactus') {
-      var aiming = enemyAiming(), hat = e.hatOff <= 0;
+    var aiming = enemyAiming(), wind = G.phase === 'botFire' && G.tell > 0, look = era.bot.look;
+    if (look === 'cactus') {
+      var hat = e.hatOff <= 0;
       drawCactusMan(c, PAL_E, aiming, hat, hurt);
       if (e.flash > 0) { c.globalAlpha = Math.min(0.9, e.flash); drawCactusMan(c, PAL_W, aiming, hat, hurt); c.globalAlpha = 1; }
+    } else if (look === 'knight') {
+      drawKnight(c, PAL_KN, wind, hurt);
+      if (e.flash > 0) { c.globalAlpha = Math.min(0.85, e.flash); drawKnight(c, PAL_CW, wind, hurt); c.globalAlpha = 1; }
+    } else if (look === 'bandit') {
+      drawBandit(c, PAL_BD, aiming, hurt);
+      if (e.flash > 0) { c.globalAlpha = Math.min(0.85, e.flash); drawBandit(c, PAL_CW, aiming, hurt); c.globalAlpha = 1; }
+    } else if (look === 'alien') {
+      drawAlien(c, PAL_AL, aiming, hurt);
+      if (e.flash > 0) { c.globalAlpha = Math.min(0.85, e.flash); drawAlien(c, PAL_CW, aiming, hurt); c.globalAlpha = 1; }
     } else {
-      var wind = G.phase === 'botFire' && G.tell > 0, hs = enemyHasSpear();
+      var hs = enemyHasSpear();
       drawCaveman(c, PAL_C, wind, hurt, hs);
       if (e.flash > 0) { c.globalAlpha = Math.min(0.9, e.flash); drawCaveman(c, PAL_CW, wind, hurt, hs); c.globalAlpha = 1; }
     }
     c.restore();
-    if (era.cover.kind === 'halftone') drawCover(c, cg.x, cg.base, cg.w, G.coverH * cg.s, res, true);
-    else if (era.cover.spots) { for (var ri = 0; ri < era.cover.spots.length; ri++) { var rg = coverGeomAt(ri); drawBigRock(c, rg.x, rg.base, rg.s, rg.w / rg.s, G.coverH); } }
-    else drawBigRock(c, cg.x, cg.base, cg.s, cg.w / cg.s, G.coverH);
+    if (era.cover.spots) {
+      for (var ri = 0; ri < era.cover.spots.length; ri++) {
+        var rg = coverGeomAt(ri);
+        if (era.cover.kind === 'halftone') drawCover(c, rg.x, rg.base, rg.w, G.coverH * rg.s, res, true);
+        else drawEraCover(c, rg.x, rg.base, rg.s, rg.w / rg.s, G.coverH, era.cover.kind);
+      }
+    } else if (era.cover.kind === 'halftone') drawCover(c, cg.x, cg.base, cg.w, G.coverH * cg.s, res, true);
+    else drawEraCover(c, cg.x, cg.base, cg.s, cg.w / cg.s, G.coverH, era.cover.kind);
     if (era.shot.kind === 'arc') drawWorldSpears(c, function (z) { return z <= e.z; });
     if (G.tell > 0 && G.phase === 'botFire') {
       if (era.bot.tell === 'glint') drawGlint(c, g.lens.x, g.lens.y, G.tell);
@@ -886,7 +1119,10 @@
       drawPlayerCave(c, PAL_K, look, tip, p.duck, p.recoil, hasSpear);
       if (p.flash > 0) { c.globalAlpha = Math.min(0.85, p.flash); drawPlayerCave(c, PAL_KW, look, tip, p.duck, p.recoil, hasSpear); c.globalAlpha = 1; }
     } else {
-      drawPlayerModern(c, PAL_P, p.duck, p.recoil);
+      // knight / cowpoke / modern / space share the over-the-shoulder modern pose; outfit tint via shorts/shirt approx
+      var L = outfitOf(G.era).look || {}, PM = Object.assign({}, PAL_P);
+      if (L.tunic) PM.shirt = L.tunic; if (L.spot) PM.shorts = L.spot;
+      drawPlayerModern(c, PM, p.duck, p.recoil);
       if (p.flash > 0) { c.globalAlpha = Math.min(0.85, p.flash); drawPlayerModern(c, PAL_PW, p.duck, p.recoil); c.globalAlpha = 1; }
     }
     c.restore();
@@ -894,7 +1130,14 @@
   // ---------- player rocks + sliding ----------
   function pSlots() { return G.era.playerSpots || [0.2]; }
   function multiSlot() { return pSlots().length > 1; }
-  function playerCoverGeomAt(i) { return { x: W * pSlots()[i] + 10 * PS, base: PY - 30 * PS, w: 196 * PS, tall: 150 * PS, low: 150 * PS }; }
+  function playerCoverGeomAt(i) {
+    var kind = G.era.cover.kind, x = W * pSlots()[i] + 10 * PS, base = PY - 30 * PS;
+    if (kind === 'halftone') return { x: x, base: PY - 42 * PS, w: 210 * PS, tall: 220 * PS, low: 100 * PS };
+    if (kind === 'barrel') return { x: x, base: base, w: 150 * PS, tall: 150 * PS, low: 150 * PS };
+    if (kind === 'shield') return { x: x, base: base, w: 180 * PS, tall: 160 * PS, low: 160 * PS };
+    if (kind === 'haystack') return { x: x, base: base, w: 190 * PS, tall: 155 * PS, low: 155 * PS };
+    return { x: x, base: base, w: 196 * PS, tall: 150 * PS, low: 150 * PS };
+  }
   function playerRockIdx() { return nearestIdx(pSlots(), G.player.xf); }  // mid-slide you count as being at the closer rock
   function canMove() { return multiSlot() && !G.ko && ['enemyHide', 'aim', 'swap', 'playerHide', 'botFire', 'roundEnd'].indexOf(G.phase) >= 0; }
   function movePlayer(dir) {
@@ -1183,7 +1426,7 @@
     G.era = era;
     if (bgEra !== era) { bgEra = era; buildScenery(); coverCache.clear(); resize(); }
     placePlayer(Math.floor(pSlots().length / 2));
-    $('avP').innerHTML = AVATARS[era.player.outfit === 'cave' ? 'cave' : 'modern'];
+    $('avP').innerHTML = AVATARS[era.player.outfit] || AVATARS.modern;
     $('avB').innerHTML = AVATARS[era.bot.look] || AVATARS.cactus;
     $('nmB').textContent = era.bot.name; $('oBn').textContent = era.bot.name.toUpperCase();
     var ic = AMMO_ICONS[era.ammo] || AMMO_ICONS.bullet, h = '';
@@ -1241,7 +1484,8 @@
     if (G.era.cover.low !== G.coverH) dropCover(G.era.cover.low);
     G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null;
     var cg = coverGeom(); G.aim.x = cg.x; G.aim.y = cg.top - 60;
-    banner(G.era.shot.kind === 'arc' ? 'THROW!' : 'SHOOT!', 'go', 0.8); sfx.go();
+    var hold = G.era.bannerHold || 0.8;
+    banner(G.era.id === 'stone' ? 'THROW! Aim above!' : (G.era.shot.kind === 'arc' ? 'THROW!' : 'SHOOT!'), 'go', hold); sfx.go();
   }
   function endAim() { releaseAim(); setPhase('swap'); banner('SWAP! YOUR TURN TO HIDE', 'good'); hint(''); }
   function startPlayerHide() { setPhase('playerHide'); G.countNum = 0; banner("YOU'RE HIDING"); hint(''); releaseAim(); sfx.whoosh(); G.player.stam = 1; G.player.tired = false; }
@@ -1367,7 +1611,7 @@
     } else if (res === 'blocked') {
       if (hit && dir) { G.stuck.push({ p: hit, d: dir, t: 0 }); }
       addFx({ k: 'spark', x: sp.x, y: sp.y, size: g.s * 0.5, rot: rnd(), life: 0.45, layer: 'world' });
-      addFx({ k: 'txt', x: sp.x, y: sp.y, text: G.era.cover.kind === 'rock' ? 'CLONK!' : 'BLOCKED', col: '#ffe9a0', size: 20, life: 0.9, layer: 'world' });
+      addFx({ k: 'txt', x: sp.x, y: sp.y, text: G.era.cover.kind === 'rock' ? 'CLONK!' : (G.era.cover.kind === 'shield' ? 'SHIELD!' : 'BLOCKED'), col: '#ffe9a0', size: 20, life: 0.9, layer: 'world' });
       sfx.clonk();
     } else {
       if (hit && dir && G.era.shot.kind === 'arc') G.stuck.push({ p: hit, d: dir, t: 0 });
@@ -1382,19 +1626,35 @@
     return G.lastShot;
   }
   function hitTest(x, y) {
-    var g = enemyGeom(), cg = g.cover;
-    if (y >= cg.top && y <= cg.base + 2 && x >= cg.x0 && x <= cg.x1) return 'blocked';
+    var g = enemyGeom(), spots = coverSpots(), co = G.era.cover;
     if (G.phase === 'enemyHide') return 'blocked';
+    // Solid covers (rocks/hay/barrels/halftone) block geometrically. Energy shields do not —
+    // they roll blockChance when a shot would otherwise hit.
+    if (co.kind !== 'shield') {
+      for (var i = 0; i < spots.length; i++) {
+        var cg = coverGeomAt(i);
+        if (y >= cg.top && y <= cg.base + 2 && x >= cg.x0 && x <= cg.x1) return 'blocked';
+      }
+    }
+    var cg0 = g.cover;
     var dx = x - g.head.x, dy = y - g.head.y;
-    if (dx * dx + dy * dy <= Math.pow(g.head.r * 1.1, 2) && y < cg.top) return 'head';
-    if (x >= g.body.x0 && x <= g.body.x1 && y >= g.body.y0 && y < Math.min(g.body.y1, cg.top)) return 'body';
+    var headHit = dx * dx + dy * dy <= Math.pow(g.head.r * 1.1, 2) && (co.kind === 'shield' || y < cg0.top);
+    var bodyHit = x >= g.body.x0 && x <= g.body.x1 && y >= g.body.y0 && y < g.body.y1 && (co.kind === 'shield' || y < cg0.top);
+    if (headHit || bodyHit) {
+      if (co.blockChance && rnd() < co.blockChance) return 'blocked';
+      return headHit ? 'head' : 'body';
+    }
     return 'miss';
   }
-  function playerFire(x, y) { // hitscan eras (Era 4/5 prototype path)
+  function playerFire(x, y) { // hitscan eras (Desert Ops / Moon Base)
     if (!canShoot()) return null;
     G.shotsP--; G.cool = coolTime(); G.stats.shots++;
     sfx.shot(); G.shake = 6; G.player.recoil = 1;
-    return resolvePlayerShot(hitTest(x, y), null, null, { x: x, y: y });
+    var res = hitTest(x, y);
+    if (res === 'blocked' && G.era.cover.kind === 'shield') {
+      addFx({ k: 'flash', x: x, y: y, size: 28, rot: rnd(), life: 0.2, layer: 'world' });
+    }
+    return resolvePlayerShot(res, null, null, { x: x, y: y });
   }
   function botFire(s) {
     G.shotsB--; s.fired = true;
@@ -1509,7 +1769,7 @@
     }
     if (era.cover.kind === 'halftone') {
       var pcg = playerCoverGeom();
-      var pcT = (G.phase === 'swap' || G.phase === 'playerHide') ? pcg.tall : (G.phase === 'botFire' || G.phase === 'roundEnd') ? pcg.low : 0;
+      var pcT = (G.phase === 'swap' || G.phase === 'playerHide') ? pcg.tall : (G.phase === 'botFire' || G.phase === 'roundEnd') ? pcg.low : (multiSlot() ? pcg.tall * 0.85 : 0);
       G.pcH = approach(G.pcH, pcT, dt * pcg.tall * (pcT < G.pcH && pcT > 0 ? 4 : 2.2));
     }
     if (G.scopeHold > 0) G.scopeHold -= dt;
@@ -1607,9 +1867,14 @@
     drawEnemyLayer(ctx, DPR);
     drawFx(ctx, 'world');
     var pc = playerCoverGeom();
-    if (G.era.cover.kind === 'halftone') { if (G.pcH > 1) drawCover(ctx, pc.x, pc.base, pc.w, G.pcH, DPR, true); }
-    else if (multiSlot()) { for (var pi = 0; pi < pSlots().length; pi++) { var pg = playerCoverGeomAt(pi); drawBigRock(ctx, pg.x, pg.base, 1, pg.w, pg.tall); } }
-    else drawBigRock(ctx, pc.x, pc.base, 1, pc.w, pc.tall);
+    if (multiSlot()) {
+      for (var pi = 0; pi < pSlots().length; pi++) {
+        var pg = playerCoverGeomAt(pi);
+        if (G.era.cover.kind === 'halftone') { if (G.pcH > 1 || G.phase === 'aim' || G.phase === 'enemyHide') drawCover(ctx, pg.x, pg.base, pg.w, (G.phase === 'botFire' || G.phase === 'playerHide' || G.phase === 'swap' || G.phase === 'roundEnd') ? (G.pcH > 1 ? G.pcH : pg.low) : pg.tall * 0.85, DPR, true); }
+        else drawEraCover(ctx, pg.x, pg.base, 1, pg.w, pg.tall, G.era.cover.kind);
+      }
+    } else if (G.era.cover.kind === 'halftone') { if (G.pcH > 1) drawCover(ctx, pc.x, pc.base, pc.w, G.pcH, DPR, true); }
+    else drawEraCover(ctx, pc.x, pc.base, 1, pc.w, pc.tall, G.era.cover.kind);
     drawPlayer(ctx);
     if (G.phase === 'botFire' && multiSlot()) {  // telegraphed aim: which rock each wound-up spear is headed for
       for (var bi = 0; bi < G.botShots.length; bi++) { var b = G.botShots[bi]; if (b.told && !b.done && b.target != null) drawTargetMarker(ctx, b.target, b.fired ? 0.45 : 0.95); }
@@ -1716,8 +1981,11 @@
     cave: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffb36b"/><rect y="36" width="48" height="12" fill="#e8962a"/><circle cx="16" cy="42" r="2.5" fill="#7a3e16"/><circle cx="32" cy="44" r="2.5" fill="#7a3e16"/><ellipse cx="24" cy="25" rx="11" ry="12" fill="#f0b088"/><path d="M11 24l-2-7 5 1-1-7 6 3 2-6 4 5 4-5 2 6 6-3-1 7 5-1-2 7c-3-5-7-7-13-7s-10 2-13 7z" fill="#3a2418"/><path d="M17 22h14" stroke="#3a2418" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="26" r="1.8" fill="#1d1a24"/><circle cx="28" cy="26" r="1.8" fill="#1d1a24"/><circle cx="24" cy="29.5" r="2.4" fill="#d8906a"/><path d="M20 33q4 3 8 0" stroke="#7a3b35" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
     caveman: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#8fd0ff"/><rect y="38" width="48" height="10" fill="#f0a030"/><ellipse cx="24" cy="26" rx="12" ry="12" fill="#e8a878"/><path d="M10 25l-3-8 6 1-1-8 6 4 2-7 4 6 4-6 2 7 6-4-1 8 6-1-3 8c-3-6-8-8-14-8s-11 2-14 8z" fill="#6b3a1e"/><path d="M14 33q10 10 20 0q-4 6-10 6t-10-6z" fill="#6b3a1e"/><path d="M16 22h16" stroke="#6b3a1e" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="26" r="2.6" fill="#fff"/><circle cx="28" cy="26" r="2.6" fill="#fff"/><circle cx="20.5" cy="26.3" r="1.3" fill="#1d1a24"/><circle cx="28.5" cy="26.3" r="1.3" fill="#1d1a24"/><circle cx="24" cy="30" r="3.2" fill="#d98a60"/><rect x="22" y="34" width="2.4" height="2.4" fill="#fff"/></svg>',
     modern: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7fc8ff"/><path d="M14 48c0-8 4-12 10-12s10 4 10 12z" fill="#b8384b"/><ellipse cx="24" cy="24" rx="11" ry="12" fill="#f5b595"/><path d="M11 19c2-8 8-11 14-11s11 2 13 8l-2 1c-3-3-7-4-11-4s-9 2-12 7z" fill="#e8434a"/><circle cx="20" cy="25" r="1.8" fill="#2b2230"/><circle cx="28" cy="25" r="1.8" fill="#2b2230"/><path d="M20 30q4 3 8 0" stroke="#7a3b35" stroke-width="1.6" fill="none"/></svg>',
-    cactus: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><rect x="13" y="16" width="22" height="34" rx="11" fill="#4cb05f"/><path d="M8 17c0-2 7-4 16-4s16 2 16 4-7 3-16 3S8 19 8 17z" fill="#b8652d"/><path d="M15 15c0-6 4-9 9-9s9 3 9 9z" fill="#c9793a"/><circle cx="20" cy="26" r="3.2" fill="#fff"/><circle cx="28" cy="26" r="3.2" fill="#fff"/><circle cx="20.6" cy="26.4" r="1.6" fill="#1d1a24"/><circle cx="28.6" cy="26.4" r="1.6" fill="#1d1a24"/></svg>'
+    cactus: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><rect x="13" y="16" width="22" height="34" rx="11" fill="#4cb05f"/><path d="M8 17c0-2 7-4 16-4s16 2 16 4-7 3-16 3S8 19 8 17z" fill="#b8652d"/><path d="M15 15c0-6 4-9 9-9s9 3 9 9z" fill="#c9793a"/><circle cx="20" cy="26" r="3.2" fill="#fff"/><circle cx="28" cy="26" r="3.2" fill="#fff"/><circle cx="20.6" cy="26.4" r="1.6" fill="#1d1a24"/><circle cx="28.6" cy="26.4" r="1.6" fill="#1d1a24"/></svg>',
+    knight: null, bandit: null, alien: null, cowpoke: null, space: null
   };
+  AVATARS.knight = AVATARS.modern; AVATARS.cowpoke = AVATARS.modern; AVATARS.space = AVATARS.modern;
+  AVATARS.bandit = AVATARS.cactus; AVATARS.alien = AVATARS.caveman;
   var AMMO_ICONS = {
     spear: '<svg viewBox="0 0 16 46"><path d="M8 1l5 11H3z" fill="#c4c8d0" stroke="#6e7280" stroke-width="1"/><rect x="6.5" y="11" width="3" height="34" rx="1.5" fill="#a0663a"/><rect x="5.5" y="12" width="5" height="4" fill="#7a4a2e"/></svg>',
     bullet: '<svg viewBox="0 0 16 46"><path d="M3 18Q3 4 8 2q5 2 5 16v26H3z" fill="#e2a520"/><rect x="3" y="32" width="10" height="12" fill="#b8791a"/></svg>',
@@ -1779,7 +2047,11 @@
     startMatch(e); return 'play';
   }
   var shopFrom = 'menu', shopTab = 'weapons';
-  function shopEra() { return ERAS[0]; } // only Stone Age gear is built in this version
+  function shopEra() {
+    var e = ERA_BY_ID[SAVE.last];
+    if (e && e.built && isUnlocked(e.idx)) return e;
+    return ERAS[Math.min(SAVE.unlocked, ERAS.length - 1)];
+  }
   function itemState(kind, it, list) {
     var era = shopEra(), owned = SAVE.owned[kind].indexOf(it.id) >= 0, eq = SAVE.equip[kind][era.id] === it.id;
     if (eq) return 'equipped';
