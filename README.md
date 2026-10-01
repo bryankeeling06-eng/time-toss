@@ -14,7 +14,7 @@ A cartoon duel through history. Hide, aim, toss — phone-first (390×844). Plai
 | 4 | Desert Ops | Scoped rifle (hitscan + hold-to-zoom) | Yellow dotted mats | Pink desert sunset | Sgt. Cactus |
 | 5 | Moon Base | Laser blaster (instant) | Energy shields (can block) | Moon base | Zorp |
 
-All five are playable. Unlock with trophies: **1,000 / 2,500 / 4,500 / 7,000**.
+All five are playable. Unlock with trophies: **500 / 1,250 / 2,250 / 3,500**.
 
 ## How to play
 
@@ -42,12 +42,13 @@ Numbers live in `BALANCE` at the top of `game.js`.
 |---|---|
 | Win / loss / draw trophies | +25 / −10 (eras 1–2) or −15 (3–5) / 0 |
 | Streak trophy bonus | +0, +5, +10, +15 (caps) |
-| Unlock thresholds | 0 · 1,000 · 2,500 · 4,500 · 7,000 |
+| Unlock thresholds | 0 · 500 · 1,250 · 2,250 · 3,500 |
 | Coins win / loss | 50 / 20 (+ streak bonuses) |
 | Shots / hide / rounds | 3 / 5 s / 5 (+ up to 3 sudden death) |
-| Stone Age bot base accuracy | ~65% (scales gently with trophies) |
+| Bot base accuracy (`baseAcc`) | Stone 50% · Castle 55% · Wild West 60% · Desert Ops 65% · Moon 70% (progressive; +trophies, cap 78%) |
+| Bot retarget on slide | **60%** (`bot.retarget`) if settled **≥0.35 s** on the new rock (`retargetSettle`); slide duration **0.25 s** |
 
-Head hits deal ×2. Duck stamina drains while held on the bot turn.
+Head hits deal ×2. Duck stamina drains while held on the bot turn (unchanged). Sliding away still works, but the bot re-aims more often so free slide-dodges are rarer.
 
 ## Run locally
 

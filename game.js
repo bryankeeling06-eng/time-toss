@@ -10,7 +10,7 @@
     // Trophies: +win, -loss (per era index 0..4), era unlock thresholds (index = era).
     // streakBonus[i] = extra trophies for the (i+1)th win in a row; the last value repeats (2nd +5, 3rd +10, 4th+ +15).
     // A loss resets the streak to 0 (a draw leaves it unchanged, no bonus).
-    trophies: { win: 25, loss: [10, 10, 15, 15, 15], draw: 0, thresholds: [0, 1000, 2500, 4500, 7000], streakBonus: [0, 5, 10, 15] },
+    trophies: { win: 25, loss: [10, 10, 15, 15, 15], draw: 0, thresholds: [0, 500, 1250, 2250, 3500], streakBonus: [0, 5, 10, 15] },
     // Pretend coins (earned only by playing; nothing is ever sold for money). streakBonus works like the trophy one.
     coins: { win: 50, loss: 20, draw: 20, streakBonus: [0, 5, 10, 15] },
     stamina: { drain: 0.2, regen: 0.45, tiredUntil: 0.35 },   // duck stamina per second (1 = full bar)
@@ -23,11 +23,11 @@
     bot: {
       baseHealth: [100, 130, 170, 220, 280], healthPerTrophy: 0.05,
       baseDamage: [14, 18, 22, 28, 34], damagePerTrophy: 0.006,
-      baseAcc: [0.65, 0.58, 0.6, 0.62, 0.64], accPerTrophy: 0.00002, accMax: 0.78,
+      baseAcc: [0.50, 0.55, 0.60, 0.65, 0.70], accPerTrophy: 0.00002, accMax: 0.78,
       headShare: 0.15,
       // Wind-up aim: the bot aims at the rock you're at when it winds up. At release it re-aims at your new rock
       // with this chance, but only if you've already been standing there for retargetSettle seconds.
-      retarget: 0.35, retargetSettle: 0.45
+      retarget: 0.60, retargetSettle: 0.35
     },
     move: { slide: 0.25 },  // seconds to slide between your rocks
     // Weapon upgrade levels per era (buy in order; equip any owned). dmg = body damage.
@@ -2114,6 +2114,7 @@
   function renderShop() {
     var era = shopEra(), list = BALANCE[shopTab][era.id], h = '';
     $('sCoins').textContent = fmt(SAVE.coins);
+    var sub = document.querySelector('.shopEra'); if (sub) sub.textContent = era.name + ' gear';
     Array.prototype.forEach.call(document.querySelectorAll('#shopTabs button'), function (b) { setClass(b, 'on', b.getAttribute('data-tab') === shopTab); });
     list.forEach(function (it, i) {
       var st = itemState(shopTab, it, list), stat, btn;
@@ -2183,7 +2184,7 @@
     var from = progressText(rw.from, rw.save.unlocked - (rw.unlockedNew ? 1 : 0)), to = progressText(rw.to, rw.save.unlocked);
     var bar = $('oBar'); bar.style.transition = 'none'; bar.style.width = (from.frac * 100).toFixed(1) + '%'; void bar.offsetWidth;
     bar.style.transition = ''; bar.style.width = (rw.unlockedNew ? 100 : to.frac * 100).toFixed(1) + '%';
-    $('oBarLbl').textContent = rw.unlockedNew ? '🔓 ' + rw.unlockedNew.name + ' unlocked! (coming soon)' : to.label;
+    $('oBarLbl').textContent = rw.unlockedNew ? ('🔓 ' + rw.unlockedNew.name + ' unlocked!' + (rw.unlockedNew.built ? '' : ' (coming soon)')) : to.label;
     var t0 = performance.now(), el = $('oTro');
     if (endAnim) clearInterval(endAnim);
     el.textContent = fmt(rw.from);
