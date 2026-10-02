@@ -11,7 +11,7 @@ A cartoon duel through history. Hide, aim, toss — phone-first (390×844). Plai
 | 1 | Stone Age | Spear (slow high arc) | Rocks | Canyon sunset | Ugga Bunga |
 | 2 | Castle | Bow & arrows (faster arc) | Haystacks | Meadow + keep | Sir Wobblebottom |
 | 3 | Wild West | Musket (nearly straight, slow reload) | Barrels | Saloon town | Dusty Pete |
-| 4 | Desert Ops | Scoped rifle (hitscan + hold-to-zoom) | Building pillars | Rooftop at dusk | Sgt. Steele |
+| 4 | Desert Ops | Scoped rifle (hitscan + hold-to-zoom) | Enemy pillars / player sandbags | Rooftop at dusk | Sgt. Steele |
 | 5 | Moon Base | Laser blaster (instant) | Energy shields (**blockChance 0.20**, free window after a block) | Moon base | Zorp |
 
 All five are playable. Unlock with trophies: **500 / 1,250 / 2,250 / 3,500**.
@@ -50,12 +50,12 @@ Each era has its **own player silhouette + held weapon** and **enemy look** (not
 | Stone Age | Caveman + overhead spear | Ugga Bunga (caveman) | Spear |
 | Castle | Knight in plate + bow | Sir Wobblebottom (knight + helm/plume) | Arrow (fletching) |
 | Wild West | Cowpoke + stetson + musket | Dusty Pete (bandit + bandana) | Musket ball + smoke puff |
-| Desert Ops | Soldier + scoped rifle | Sgt. Steele (US Army) | Rifle tracer |
+| Desert Ops | US Army (OD fatigues + helm) + scoped rifle | Sgt. Steele (US Army) | Rifle tracer |
 | Moon Base | Space suit + dome helm + blaster | Zorp (big-headed alien) | Cyan laser bolt |
 
 Moon shields: **`blockChance` 0.20** (was 0.35). A successful block opens a free window so the next careful shot can land (shields dim while open).
 
-Moon Base ground is charcoal regolith + metal plate seams (no ice-lot patch facing the player). Desert Ops is a rooftop duel: pillars are the hide spots; the enemy is a US Army soldier.
+Moon Base ground is charcoal regolith + metal plate seams (no ice-lot patch facing the player). Desert Ops is a rooftop duel: enemy hides behind pillars, player behind sandbags; both sides are US Army (generic OD kit, no logos/flags).
 
 ## Progression & fresh save
 

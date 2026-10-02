@@ -63,7 +63,7 @@
         { id: 'duster', name: 'Iron Duster', hp: 70, dmgBonus: 0.1, cost: 1500, note: '+70 health, +10% damage', look: { tunic: '#4a4a55', spot: '#2a2a30', cloak: '#2a2a30', bones: true } }
       ],
       modern: [
-        { id: 'fatigues', name: 'Desert Fatigues', hp: 0, cost: 0, note: 'Sand-ready', look: { tunic: '#b8384b', spot: '#6a2030' } },
+        { id: 'fatigues', name: 'Desert Fatigues', hp: 0, cost: 0, note: 'OD / camo kit', look: { tunic: '#4a5a3a', spot: '#3a4a2a', helm: true } },
         { id: 'vestplate', name: 'Padded Vest', hp: 50, cost: 1200, note: '+50 health', look: { tunic: '#5a6a4a', spot: '#3a4a2a', spots: true } },
         { id: 'ghillie', name: 'Ghillie Suit', hp: 80, cost: 2000, note: '+80 health', look: { tunic: '#4a7a3a', spot: '#2a5a22', leaf: true } }
       ],
@@ -108,12 +108,13 @@
       hints: { aim: 'Pull DOWN to aim · slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
     { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: true, scene: 'desert',
       cover: { kind: 'pillar', tall: 1.55, low: 1.55, halfW: 0.55, spots: [-2.5, 0, 2.5] },
+      playerCover: { kind: 'sandbag' },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6.5,
       shot: { kind: 'hitscan', zoom: 2.3, sens: 0.85, cool: 0.45 },
       botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
       bot: { name: 'Sgt. Steele', look: 'soldier', tell: 'glint', flight: 0 },
       player: { outfit: 'modern' }, ammo: 'bullet',
-      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ between pillars or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ behind sandbags or DUCK!' } },
     { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: true, scene: 'moon',
       cover: { kind: 'shield', tall: 1.25, low: 1.25, halfW: 1.0, spots: [-2.4, 0, 2.4], blockChance: 0.20 },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 7,
@@ -857,11 +858,33 @@
     c.beginPath(); c.moveTo(x - hw * 0.2, base - hh * 0.85); c.lineTo(x - hw * 0.25, base - hh * 0.12); c.stroke();
     c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x - hw * 0.55, base - hh * 0.8, hw * 0.18, hh * 0.55);
   }
+  function drawSandbags(c, x, base, s, w, h) {
+    // Rooftop sandbag wall — tan bags, reads as hide cover (Desert Ops player)
+    var hw = w * s / 2, hh = h * s, rows = 3;
+    c.fillStyle = 'rgba(20,18,28,.35)'; c.beginPath(); c.ellipse(x, base, hw * 1.2, hh * 0.12, 0, 0, 7); c.fill();
+    for (var r = 0; r < rows; r++) {
+      var rowH = hh / rows, by = base - (r + 0.5) * rowH;
+      var bags = (r % 2) ? 3 : 4, bw = (hw * 1.95) / bags, off = (r % 2) ? bw * 0.4 : 0;
+      for (var b = 0; b < bags; b++) {
+        var bx = x - hw * 0.98 + off + b * bw + bw * 0.5;
+        var tan = ((b + r) % 2) ? '#c9a86a' : '#b89858', dark = ((b + r) % 2) ? '#a88848' : '#987848';
+        c.fillStyle = tan;
+        c.beginPath();
+        if (c.roundRect) c.roundRect(bx - bw * 0.44, by - rowH * 0.42, bw * 0.88, rowH * 0.82, Math.max(3, s * 0.05));
+        else { c.ellipse(bx, by, bw * 0.42, rowH * 0.36, 0, 0, 7); }
+        c.fill();
+        c.fillStyle = dark; c.fillRect(bx - bw * 0.3, by - rowH * 0.08, bw * 0.6, Math.max(2, rowH * 0.12));
+        c.strokeStyle = 'rgba(60,40,18,.4)'; c.lineWidth = Math.max(1, s * 0.02);
+        c.beginPath(); c.moveTo(bx - bw * 0.25, by); c.lineTo(bx + bw * 0.25, by); c.stroke();
+      }
+    }
+  }
   function drawEraCover(c, x, base, s, w, h, kind) {
     if (kind === 'haystack') drawHaystack(c, x, base, s, w, h);
     else if (kind === 'barrel') drawBarrel(c, x, base, s, w, h);
     else if (kind === 'shield') drawShieldPad(c, x, base, s, w, h);
     else if (kind === 'pillar') drawPillar(c, x, base, s, w, h);
+    else if (kind === 'sandbag') drawSandbags(c, x, base, s, w, h);
     else if (kind === 'halftone') drawCover(c, x, base, w * s, h * s, DPR, true);
     else drawBigRock(c, x, base, s, w, h);
   }
@@ -1438,7 +1461,9 @@
       if (p.flash > 0) { c.globalAlpha = Math.min(0.85, p.flash); drawPlayerSpace(c, look, '#fff', p.duck, p.recoil, armed, true); c.globalAlpha = 1; }
     } else {
       var PM = Object.assign({}, PAL_P);
-      if (look.tunic) PM.shirt = look.tunic; if (look.spot) PM.shorts = look.spot;
+      if (look.tunic) { PM.shirt = look.tunic; PM.shorts = look.tunic; }
+      if (look.spot) { PM.shirt2 = look.spot; PM.shorts2 = look.spot; PM.cap = look.spot; PM.cap2 = look.spot; }
+      if (look.leaf) { PM.uni3 = '#4a7a3a'; PM.shirt = look.tunic || '#4a7a3a'; }
       drawPlayerModern(c, PM, p.duck, p.recoil);
       if (p.flash > 0) { c.globalAlpha = Math.min(0.85, p.flash); drawPlayerModern(c, PAL_PW, p.duck, p.recoil); c.globalAlpha = 1; }
     }
@@ -1447,11 +1472,13 @@
   // ---------- player rocks + sliding ----------
   function pSlots() { return G.era.playerSpots || [0.2]; }
   function multiSlot() { return pSlots().length > 1; }
+  function playerCoverKind() { return (G.era.playerCover && G.era.playerCover.kind) || G.era.cover.kind; }
   function playerCoverGeomAt(i) {
-    var kind = G.era.cover.kind, x = W * pSlots()[i] + 10 * PS, base = PY - 30 * PS;
+    var kind = playerCoverKind(), x = W * pSlots()[i] + 10 * PS, base = PY - 30 * PS;
     if (kind === 'halftone') return { x: x, base: PY - 42 * PS, w: 210 * PS, tall: 220 * PS, low: 100 * PS };
     if (kind === 'barrel') return { x: x, base: base, w: 150 * PS, tall: 150 * PS, low: 150 * PS };
     if (kind === 'pillar') return { x: x, base: base, w: 120 * PS, tall: 210 * PS, low: 210 * PS };
+    if (kind === 'sandbag') return { x: x, base: base, w: 170 * PS, tall: 130 * PS, low: 130 * PS };
     if (kind === 'shield') return { x: x, base: base, w: 180 * PS, tall: 160 * PS, low: 160 * PS };
     if (kind === 'haystack') return { x: x, base: base, w: 190 * PS, tall: 155 * PS, low: 155 * PS };
     return { x: x, base: base, w: 196 * PS, tall: 150 * PS, low: 150 * PS };
@@ -1596,47 +1623,52 @@
     line(c, 50, sh + 4, 68, sh + 16, 22, suit); line(c, 68, sh + 16, 46, sh - 6 + kick, 16, suit);
   }
 
-  var PAL_P = { skin: '#f2a58a', skin2: '#dc8a72', shoe: '#ff8a2a', sole: '#fff3e0', sock: '#fff', shorts: '#8a6b3a', shorts2: '#6f5530', belt: '#4a3222',
-    shirt: '#8e2a3a', shirt2: '#6e1f2e', strap: '#2e1c2a', hair: '#2b2230', cap: '#e8434a', cap2: '#b8303a', wood: '#9a5b3a', gun: '#3b3345', scope: '#241e2e', lens: '#7fd3ff' };
+  // US Army player (Desert Ops) — OD fatigues + PASGT helm from behind; matches Sgt. Steele side
+  var PAL_P = { skin: '#d4a07a', skin2: '#b88060', shoe: '#2a2218', sole: '#1a1810', sock: '#3a4a2a',
+    shorts: '#4a5a3a', shorts2: '#3a4a2a', belt: '#2a3020', shirt: '#4a5a3a', shirt2: '#3a4a2a',
+    strap: '#2a3020', hair: '#2b2230', cap: '#3a4a30', cap2: '#2a3a22', wood: '#2a2a30',
+    gun: '#2a2a30', scope: '#1a1a20', lens: '#7fd3ff', uni3: '#5a6a48', patch: '#c9a24a' };
   var PAL_PW = {}; Object.keys(PAL_P).forEach(function (k) { PAL_PW[k] = '#fff'; });
   function line(c, x0, y0, x1, y1, w, col) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
   function drawPlayerModern(c, P, k, rec) {
     c.lineCap = 'round'; c.lineJoin = 'round';
-    var hipY = -150 + 64 * k, sh = hipY - 112 + rec * 6, headY = sh - 38;
-    // legs
+    var hipY = -150 + 64 * k, sh = hipY - 112 + rec * 6, headY = sh - 38, uni = P.shirt, uni2 = P.shirt2 || P.shorts2;
+    // combat boots + OD pant legs
     for (var sd = -1; sd <= 1; sd += 2) {
       var fx = sd * 30 + (sd > 0 ? 6 : 0), fy = sd > 0 ? -14 : -6;
-      var kx = sd * (34 + 18 * k), ky = -80 + 40 * k;
-      var hx = sd * 20;
-      line(c, kx, ky, fx, fy - 14, 22, P.skin);
-      line(c, kx + sd * 3, ky + 4, fx + sd * 2, fy - 14, 8, P.skin2);
-      line(c, fx, fy - 18, fx, fy - 8, 20, P.sock);
+      var kx = sd * (34 + 18 * k), ky = -80 + 40 * k, hx = sd * 20;
+      line(c, hx, hipY, kx, ky, 34, P.shorts);
+      line(c, kx, ky, fx, fy - 14, 26, P.shorts);
       c.fillStyle = P.shoe; c.beginPath(); c.ellipse(fx, fy, 22, 12, 0, 0, 7); c.fill();
-      c.fillStyle = P.sole; c.fillRect(fx - 20, fy + 4, 40, 5);
-      line(c, hx, hipY, kx, ky - 6, 36, P.shorts);
+      c.fillStyle = P.sole; c.fillRect(fx - 18, fy + 3, 36, 4);
     }
-    // shorts seat + belt
-    c.fillStyle = P.shorts; c.beginPath(); if (c.roundRect) c.roundRect(-46, hipY - 30, 92, 46, 16); else c.rect(-46, hipY - 30, 92, 46); c.fill();
-    c.fillStyle = P.shorts2; c.fillRect(-2, hipY - 24, 4, 36);
-    c.fillStyle = P.belt; c.fillRect(-46, hipY - 32, 92, 9);
-    // torso
-    c.fillStyle = P.shirt; c.beginPath();
+    // seat + belt + buckle
+    c.fillStyle = P.shorts; c.beginPath(); if (c.roundRect) c.roundRect(-46, hipY - 30, 92, 46, 14); else c.rect(-46, hipY - 30, 92, 46); c.fill();
+    c.fillStyle = P.belt; c.fillRect(-46, hipY - 32, 92, 10);
+    c.fillStyle = P.patch || '#c9a24a'; c.fillRect(-10, hipY - 30, 20, 6);
+    // blouse / torso (generic US Army fatigues — no flags/logos)
+    c.fillStyle = uni; c.beginPath();
     c.moveTo(-42, hipY - 28); c.lineTo(-58, sh + 12); c.quadraticCurveTo(-56, sh - 8, -36, sh - 10);
     c.lineTo(36, sh - 10); c.quadraticCurveTo(56, sh - 8, 58, sh + 12); c.lineTo(42, hipY - 28); c.closePath(); c.fill();
-    c.fillStyle = P.shirt2; c.beginPath(); c.moveTo(14, sh - 8); c.lineTo(36, sh - 10); c.quadraticCurveTo(56, sh - 8, 58, sh + 12); c.lineTo(42, hipY - 28); c.lineTo(18, hipY - 28); c.closePath(); c.fill();
-    // straps
-    line(c, -28, sh - 6, -22, hipY - 30, 9, P.strap); line(c, 28, sh - 6, 22, hipY - 30, 9, P.strap);
-    line(c, -26, sh + 52, 26, sh + 52, 8, P.strap);
-    // left arm (supports the barrel)
-    line(c, -50, sh + 6, -34, sh - 28, 24, P.shirt); line(c, -34, sh - 28, 10, sh - 56, 18, P.skin);
-    // neck + head
+    // pocket flaps + shoulder straps
+    c.fillStyle = P.uni3 || uni2; c.fillRect(-28, sh + 28, 20, 16); c.fillRect(8, sh + 28, 20, 16);
+    c.fillStyle = P.strap; c.fillRect(-40, sh - 6, 18, 10); c.fillRect(22, sh - 6, 18, 10);
+    line(c, -26, sh - 4, -20, hipY - 28, 8, P.strap); line(c, 26, sh - 4, 20, hipY - 28, 8, P.strap);
+    // left arm supporting barrel
+    line(c, -50, sh + 6, -34, sh - 28, 24, uni); line(c, -34, sh - 28, 10, sh - 56, 18, P.skin);
+    // neck + ears
     c.fillStyle = P.skin; c.fillRect(-12, sh - 22, 24, 16);
     c.beginPath(); c.ellipse(-30, headY + 4, 6, 9, 0, 0, 7); c.ellipse(30, headY + 4, 6, 9, 0, 0, 7); c.fill();
-    c.fillStyle = P.hair; c.beginPath(); c.arc(0, headY, 31, 0, 7); c.fill();
-    c.fillStyle = P.cap; c.beginPath(); c.arc(0, headY - 2, 32, Math.PI * 1.02, Math.PI * 1.98); c.quadraticCurveTo(0, headY - 12, -32, headY - 3); c.fill();
-    c.fillStyle = P.cap2; c.beginPath(); c.ellipse(0, headY - 8, 12, 6, 0, 0, 7); c.fill();
-    c.fillStyle = P.hair; c.beginPath(); c.ellipse(0, headY - 7, 8, 3.5, 0, 0, 7); c.fill();
-    // rifle
+    // PASGT / ACH helmet (OD) — from behind
+    c.fillStyle = P.cap; c.beginPath(); c.ellipse(0, headY - 2, 34, 30, 0, 0, 7); c.fill();
+    c.beginPath(); c.moveTo(-34, headY - 2); c.quadraticCurveTo(0, headY - 42, 34, headY - 2);
+    c.lineTo(32, headY + 6); c.quadraticCurveTo(0, headY - 22, -32, headY + 6); c.closePath(); c.fill();
+    c.fillStyle = P.cap2; c.fillRect(-34, headY - 4, 68, 8);
+    // chin strap hints
+    c.strokeStyle = P.strap; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(-24, headY + 2); c.quadraticCurveTo(-28, headY + 22, -14, sh - 10); c.stroke();
+    c.beginPath(); c.moveTo(24, headY + 2); c.quadraticCurveTo(28, headY + 22, 14, sh - 10); c.stroke();
+    // scoped rifle
     var kick = rec * 10;
     line(c, 36, sh + 14 + kick, 41, sh - 18 + kick, 15, P.wood);
     line(c, 41, sh - 18 + kick, 47, sh - 74 + kick, 10, P.gun);
@@ -1644,8 +1676,8 @@
     line(c, 33, sh - 26 + kick, 39, sh - 76 + kick, 12, P.scope);
     c.fillStyle = P.lens; c.beginPath(); c.arc(39, sh - 77 + kick, 5, 0, 7); c.fill();
     line(c, 36, sh - 40 + kick, 44, sh - 40 + kick, 4, P.gun); line(c, 38, sh - 62 + kick, 46, sh - 62 + kick, 4, P.gun);
-    // right arm (trigger hand)
-    line(c, 50, sh + 6, 72, sh + 22, 24, P.shirt); line(c, 72, sh + 22, 40, sh - 4 + kick, 18, P.skin);
+    // right arm (trigger)
+    line(c, 50, sh + 6, 72, sh + 22, 24, uni); line(c, 72, sh + 22, 40, sh - 4 + kick, 18, P.skin);
   }
   function addFx(o) { o.t = 0; G.fx.push(o); return o; }
   function star(c, x, y, r1, r2, n, rot) {
@@ -2327,12 +2359,12 @@
     var pc = playerCoverGeom();
     if (multiSlot()) {
       for (var pi = 0; pi < pSlots().length; pi++) {
-        var pg = playerCoverGeomAt(pi);
-        if (G.era.cover.kind === 'halftone') { if (G.pcH > 1 || G.phase === 'aim' || G.phase === 'enemyHide') drawCover(ctx, pg.x, pg.base, pg.w, (G.phase === 'botFire' || G.phase === 'playerHide' || G.phase === 'swap' || G.phase === 'roundEnd') ? (G.pcH > 1 ? G.pcH : pg.low) : pg.tall * 0.85, DPR, true); }
-        else drawEraCover(ctx, pg.x, pg.base, 1, pg.w, pg.tall, G.era.cover.kind);
+        var pg = playerCoverGeomAt(pi), pck = playerCoverKind();
+        if (pck === 'halftone') { if (G.pcH > 1 || G.phase === 'aim' || G.phase === 'enemyHide') drawCover(ctx, pg.x, pg.base, pg.w, (G.phase === 'botFire' || G.phase === 'playerHide' || G.phase === 'swap' || G.phase === 'roundEnd') ? (G.pcH > 1 ? G.pcH : pg.low) : pg.tall * 0.85, DPR, true); }
+        else drawEraCover(ctx, pg.x, pg.base, 1, pg.w, pg.tall, pck);
       }
-    } else if (G.era.cover.kind === 'halftone') { if (G.pcH > 1) drawCover(ctx, pc.x, pc.base, pc.w, G.pcH, DPR, true); }
-    else drawEraCover(ctx, pc.x, pc.base, 1, pc.w, pc.tall, G.era.cover.kind);
+    } else if (playerCoverKind() === 'halftone') { if (G.pcH > 1) drawCover(ctx, pc.x, pc.base, pc.w, G.pcH, DPR, true); }
+    else drawEraCover(ctx, pc.x, pc.base, 1, pc.w, pc.tall, playerCoverKind());
     drawPlayer(ctx);
     if (G.phase === 'botFire' && multiSlot()) {  // telegraphed aim: which rock each wound-up spear is headed for
       for (var bi = 0; bi < G.botShots.length; bi++) { var b = G.botShots[bi]; if (b.told && !b.done && b.target != null) drawTargetMarker(ctx, b.target, b.fired ? 0.45 : 0.95); }
@@ -2453,7 +2485,7 @@
   var AVATARS = {
     cave: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffb36b"/><rect y="36" width="48" height="12" fill="#e8962a"/><circle cx="16" cy="42" r="2.5" fill="#7a3e16"/><circle cx="32" cy="44" r="2.5" fill="#7a3e16"/><ellipse cx="24" cy="25" rx="11" ry="12" fill="#f0b088"/><path d="M11 24l-2-7 5 1-1-7 6 3 2-6 4 5 4-5 2 6 6-3-1 7 5-1-2 7c-3-5-7-7-13-7s-10 2-13 7z" fill="#3a2418"/><path d="M17 22h14" stroke="#3a2418" stroke-width="2.4" stroke-linecap="round"/><circle cx="20" cy="26" r="1.8" fill="#1d1a24"/><circle cx="28" cy="26" r="1.8" fill="#1d1a24"/><circle cx="24" cy="29.5" r="2.4" fill="#d8906a"/><path d="M20 33q4 3 8 0" stroke="#7a3b35" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
     caveman: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#8fd0ff"/><rect y="38" width="48" height="10" fill="#f0a030"/><ellipse cx="24" cy="26" rx="12" ry="12" fill="#e8a878"/><path d="M10 25l-3-8 6 1-1-8 6 4 2-7 4 6 4-6 2 7 6-4-1 8 6-1-3 8c-3-6-8-8-14-8s-11 2-14 8z" fill="#6b3a1e"/><path d="M14 33q10 10 20 0q-4 6-10 6t-10-6z" fill="#6b3a1e"/><path d="M16 22h16" stroke="#6b3a1e" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="26" r="2.6" fill="#fff"/><circle cx="28" cy="26" r="2.6" fill="#fff"/><circle cx="20.5" cy="26.3" r="1.3" fill="#1d1a24"/><circle cx="28.5" cy="26.3" r="1.3" fill="#1d1a24"/><circle cx="24" cy="30" r="3.2" fill="#d98a60"/><rect x="22" y="34" width="2.4" height="2.4" fill="#fff"/></svg>',
-    modern: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7fc8ff"/><path d="M14 48c0-8 4-12 10-12s10 4 10 12z" fill="#b8384b"/><ellipse cx="24" cy="24" rx="11" ry="12" fill="#f5b595"/><path d="M11 19c2-8 8-11 14-11s11 2 13 8l-2 1c-3-3-7-4-11-4s-9 2-12 7z" fill="#e8434a"/><circle cx="20" cy="25" r="1.8" fill="#2b2230"/><circle cx="28" cy="25" r="1.8" fill="#2b2230"/><path d="M20 30q4 3 8 0" stroke="#7a3b35" stroke-width="1.6" fill="none"/></svg>',
+    modern: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#6a7080"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#4a5a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d4a07a"/><path d="M10 20c2-8 8-12 14-12s12 4 14 12l-3 1c-2-4-6-6-11-6s-9 2-11 7z" fill="#3a4a30"/><rect x="12" y="18" width="24" height="5" fill="#2a3a22"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     cactus: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><rect x="13" y="16" width="22" height="34" rx="11" fill="#4cb05f"/><path d="M8 17c0-2 7-4 16-4s16 2 16 4-7 3-16 3S8 19 8 17z" fill="#b8652d"/><path d="M15 15c0-6 4-9 9-9s9 3 9 9z" fill="#c9793a"/><circle cx="20" cy="26" r="3.2" fill="#fff"/><circle cx="28" cy="26" r="3.2" fill="#fff"/><circle cx="20.6" cy="26.4" r="1.6" fill="#1d1a24"/><circle cx="28.6" cy="26.4" r="1.6" fill="#1d1a24"/></svg>',
     soldier: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#6a7080"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#4a5a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d4a07a"/><path d="M10 20c2-8 8-12 14-12s12 4 14 12l-3 1c-2-4-6-6-11-6s-9 2-11 7z" fill="#3a4a30"/><rect x="12" y="18" width="24" height="5" fill="#2a3a22"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     knight: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7ec3f0"/><rect y="40" width="48" height="8" fill="#6ab04c"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#c0c8d4"/><ellipse cx="24" cy="24" rx="12" ry="13" fill="#c0c8d4"/><rect x="14" y="22" width="20" height="5" fill="#2a2a35"/><path d="M22 10q4-8 8 0" fill="#e8434a"/><circle cx="20" cy="28" r="1.4" fill="#1d1a24"/><circle cx="28" cy="28" r="1.4" fill="#1d1a24"/></svg>',
@@ -2700,6 +2732,7 @@
     eraAmmo: function (id) { var e = ERA_BY_ID[id || G.era.id]; return e ? e.ammo : null; },
     eraBlockChance: function (id) { var e = ERA_BY_ID[id || G.era.id]; return e && e.cover ? (e.cover.blockChance || 0) : 0; },
     eraLooks: function (id) { var e = ERA_BY_ID[id || G.era.id]; return e ? { player: e.player.outfit, bot: e.bot.look, ammo: e.ammo } : null; },
+    eraCover: function (id) { var e = ERA_BY_ID[id || G.era.id]; if (!e) return null; return { enemy: e.cover.kind, player: (e.playerCover && e.playerCover.kind) || e.cover.kind }; },
     shieldOpen: function () { return !!G.shieldOpen; },
     setShieldOpen: function (b) { G.shieldOpen = !!b; }
   };
