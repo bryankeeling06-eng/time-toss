@@ -107,13 +107,13 @@
       player: { outfit: 'cowpoke' }, ammo: 'ball',
       hints: { aim: 'Pull DOWN to aim · slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
     { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: true, scene: 'desert',
-      cover: { kind: 'halftone', tall: 2.3, low: 0.7, halfW: 1.15, spots: [-2.5, 0, 2.5] },
+      cover: { kind: 'pillar', tall: 1.55, low: 1.55, halfW: 0.55, spots: [-2.5, 0, 2.5] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6.5,
       shot: { kind: 'hitscan', zoom: 2.3, sens: 0.85, cool: 0.45 },
       botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
-      bot: { name: 'Sgt. Cactus', look: 'cactus', tell: 'glint', flight: 0 },
+      bot: { name: 'Sgt. Steele', look: 'soldier', tell: 'glint', flight: 0 },
       player: { outfit: 'modern' }, ammo: 'bullet',
-      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ between pillars or DUCK!' } },
     { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: true, scene: 'moon',
       cover: { kind: 'shield', tall: 1.25, low: 1.25, halfW: 1.0, spots: [-2.4, 0, 2.4], blockChance: 0.20 },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 7,
@@ -402,13 +402,12 @@
     var sc = G.era.scene;
     if (sc === 'desert') {
       props = [
-        { t: 'palm', wx: -4.6, z: 13 }, { t: 'palm', wx: -3.2, z: 27 }, { t: 'palm', wx: 5.4, z: 21 },
-        { t: 'palm', wx: 1.6, z: 95 }, { t: 'palm', wx: -1.2, z: 75 }, { t: 'palm', wx: 9, z: 60 },
-        { t: 'cactus', wx: 4.2, z: 10.5 }, { t: 'cactus', wx: -3.0, z: 32 }, { t: 'cactus', wx: 2.6, z: 42 },
-        { t: 'cactus', wx: 7, z: 46 }, { t: 'cactus', wx: -7.5, z: 40 }, { t: 'cactus', wx: 0.4, z: 64 },
-        { t: 'cactus', wx: -5.2, z: 17 }, { t: 'cactus', wx: 6.2, z: 30 }
+        { t: 'ac', wx: -4.0, z: 12 }, { t: 'ac', wx: 4.6, z: 15 }, { t: 'ac', wx: -2.2, z: 38 },
+        { t: 'vent', wx: 2.8, z: 22 }, { t: 'vent', wx: -5.5, z: 28 }, { t: 'vent', wx: 5.2, z: 48 },
+        { t: 'dish', wx: 1.2, z: 55 }, { t: 'dish', wx: -6.5, z: 62 },
+        { t: 'ac', wx: 0.4, z: 70 }, { t: 'vent', wx: 7.0, z: 35 }
       ];
-      for (var i = 0; i < 16; i++) props.push({ t: rnd() < 0.5 ? 'bush' : 'rock', wx: rr(-12, 12), z: rr(22, 90) });
+      for (var i = 0; i < 8; i++) props.push({ t: rnd() < 0.5 ? 'vent' : 'ac', wx: rr(-10, 10), z: rr(20, 80) });
     } else if (sc === 'castle') {
       props = [
         { t: 'tree', wx: -5.2, z: 14 }, { t: 'tree', wx: 5.5, z: 18 }, { t: 'tree', wx: -3.0, z: 28 }, { t: 'tree', wx: 4.0, z: 36 },
@@ -595,58 +594,83 @@
     c.restore();
   }
   function drawDesert(c) {
-    // sky
+    // dusk city sky over a rooftop fight
     var g = c.createLinearGradient(0, 0, 0, Y0);
-    g.addColorStop(0, '#2a1d66'); g.addColorStop(0.28, '#4d2a88'); g.addColorStop(0.52, '#8a3596');
-    g.addColorStop(0.74, '#cf4d8c'); g.addColorStop(0.9, '#f47a6c'); g.addColorStop(1, '#ffb35c');
+    g.addColorStop(0, '#1a1848'); g.addColorStop(0.3, '#3a2870'); g.addColorStop(0.55, '#8a4088');
+    g.addColorStop(0.78, '#e07060'); g.addColorStop(1, '#f0b070');
     c.fillStyle = g; c.fillRect(-W, -H, W * 3, Y0 + H + 1);
-    // sun + glow
-    var sx = CX + W * 0.03;
-    var sg = c.createRadialGradient(sx, Y0, 0, sx, Y0, W * 0.6);
-    sg.addColorStop(0, 'rgba(255,225,130,.8)'); sg.addColorStop(0.25, 'rgba(255,170,110,.35)'); sg.addColorStop(1, 'rgba(255,140,120,0)');
-    c.fillStyle = sg; c.fillRect(sx - W * 0.6, Y0 - W * 0.6, W * 1.2, W * 0.6);
-    c.fillStyle = '#ffe68a'; c.beginPath(); c.arc(sx, Y0, W * 0.075, Math.PI, 0); c.fill();
-    // clouds
-    var ccol = ['rgba(70,40,130,.55)', 'rgba(140,60,160,.45)', 'rgba(230,110,150,.4)'];
-    for (var i = 0; i < clouds.length; i++) {
-      var cl = clouds[i], x = cl.x * W, y = cl.y * Y0, w = cl.w * W, h = cl.h * H;
-      c.fillStyle = ccol[cl.y < 0.35 ? 0 : cl.y < 0.6 ? 1 : 2];
-      c.beginPath();
-      c.ellipse(x, y, w * 0.5, h * 0.45, 0, 0, 7);
-      c.ellipse(x - w * 0.18, y - h * 0.3, w * 0.22, h * 0.45, 0, 0, 7);
-      c.ellipse(x + w * 0.12, y - h * 0.35, w * 0.26, h * 0.55, 0, 0, 7);
-      c.fill();
+    // sun glow on horizon
+    var sx = CX + W * 0.08;
+    var sg = c.createRadialGradient(sx, Y0, 0, sx, Y0, W * 0.55);
+    sg.addColorStop(0, 'rgba(255,220,120,.75)'); sg.addColorStop(0.3, 'rgba(255,150,100,.3)'); sg.addColorStop(1, 'rgba(255,120,100,0)');
+    c.fillStyle = sg; c.fillRect(sx - W * 0.55, Y0 - W * 0.55, W * 1.1, W * 0.55);
+    c.fillStyle = '#ffe08a'; c.beginPath(); c.arc(sx, Y0, W * 0.06, Math.PI, 0); c.fill();
+    // distant skyline
+    c.fillStyle = '#2a2248';
+    [[0.02, 0.14, 0.09], [0.12, 0.1, 0.07], [0.2, 0.16, 0.11], [0.32, 0.08, 0.06], [0.4, 0.13, 0.09],
+     [0.55, 0.18, 0.12], [0.68, 0.1, 0.07], [0.78, 0.15, 0.1], [0.9, 0.11, 0.08]].forEach(function (b) {
+      c.fillRect(W * b[0], Y0 - H * b[1], W * b[2], H * b[1] + 2);
+      // windows
+      c.fillStyle = 'rgba(255,200,120,.35)';
+      for (var wy = 2; wy < 5; wy++) for (var wx = 0; wx < 3; wx++)
+        c.fillRect(W * b[0] + W * b[2] * (0.15 + wx * 0.28), Y0 - H * b[1] * (0.25 + wy * 0.15), Math.max(2, W * b[2] * 0.12), Math.max(2, H * b[1] * 0.08));
+      c.fillStyle = '#2a2248';
+    });
+    // far building face with column rhythm (scenery only — playable pillars are cover)
+    c.fillStyle = '#4a4658';
+    c.fillRect(W * 0.08, Y0 - H * 0.04, W * 0.84, H * 0.045);
+    c.fillStyle = '#3a3648';
+    for (var col = 0; col < 7; col++) {
+      var cx = W * (0.14 + col * 0.12);
+      c.fillRect(cx - W * 0.018, Y0 - H * 0.12, W * 0.036, H * 0.12);
+      c.fillStyle = '#5a5668'; c.fillRect(cx - W * 0.022, Y0 - H * 0.125, W * 0.044, H * 0.012); c.fillStyle = '#3a3648';
     }
-    // mesas
-    mesa(c, W * 0.30, W * 0.52, Y0 - H * 0.012, '#ec959c');
-    mesa(c, W * 0.60, W * 0.74, Y0 - H * 0.016, '#ec959c');
-    mesa(c, -W * 0.08, W * 0.36, Y0 - H * 0.05, '#dc6f7e');
-    mesa(c, W * 0.70, W * 1.06, Y0 - H * 0.04, '#dc6f7e');
-    mesa(c, W * 0.46, W * 0.58, Y0 - H * 0.01, '#e27c86');
-    // ground
+    // rooftop concrete deck
     var gg = c.createLinearGradient(0, Y0, 0, H);
-    gg.addColorStop(0, '#f6ab92'); gg.addColorStop(0.18, '#ec8d84'); gg.addColorStop(1, '#dc6e74');
+    gg.addColorStop(0, '#9a989e'); gg.addColorStop(0.25, '#7a7880'); gg.addColorStop(0.7, '#5e5c64'); gg.addColorStop(1, '#4a4850');
     c.fillStyle = gg; c.fillRect(-W, Y0, W * 3, H * 2);
-    // soft dunes
-    c.fillStyle = 'rgba(255,190,160,.35)';
-    c.beginPath(); c.ellipse(W * 0.2, Y0 + H * 0.05, W * 0.6, H * 0.03, 0, 0, 7); c.fill();
-    c.beginPath(); c.ellipse(W * 0.85, Y0 + H * 0.1, W * 0.5, H * 0.035, 0, 0, 7); c.fill();
-    c.fillStyle = 'rgba(190,80,95,.18)';
-    c.beginPath(); c.ellipse(W * 0.7, Y0 + H * 0.2, W * 0.7, H * 0.05, -0.05, 0, 7); c.fill();
-    c.beginPath(); c.ellipse(W * 0.05, Y0 + H * 0.33, W * 0.6, H * 0.06, 0.08, 0, 7); c.fill();
-    c.fillStyle = 'rgba(255,200,170,.22)';
-    c.beginPath(); c.ellipse(W * 0.6, Y0 + H * 0.4, W * 0.55, H * 0.04, 0, 0, 7); c.fill();
-    // horizon haze
-    var hz = c.createLinearGradient(0, Y0 - 10, 0, Y0 + 24);
-    hz.addColorStop(0, 'rgba(255,200,150,0)'); hz.addColorStop(0.4, 'rgba(255,200,150,.45)'); hz.addColorStop(1, 'rgba(255,200,150,0)');
-    c.fillStyle = hz; c.fillRect(-W, Y0 - 10, W * 3, 34);
-    // props, far to near
+    // roof seams
+    c.strokeStyle = 'rgba(30,28,36,.28)'; c.lineWidth = 2;
+    for (var i = 0; i < 7; i++) {
+      var yy = Y0 + H * (0.06 + i * 0.11);
+      c.beginPath(); c.moveTo(-W, yy); c.lineTo(W * 2, yy + (i % 2 ? 6 : -4)); c.stroke();
+    }
+    c.strokeStyle = 'rgba(30,28,36,.18)';
+    for (var j = 0; j < 5; j++) {
+      var xx = W * (0.1 + j * 0.2);
+      c.beginPath(); c.moveTo(xx, Y0); c.lineTo(xx + W * 0.05, H); c.stroke();
+    }
+    // near roof parapet / edge (player stands on this roof)
+    c.fillStyle = '#3a3842';
+    c.beginPath(); c.moveTo(-W, H * 0.88); c.lineTo(W * 2, H * 0.88); c.lineTo(W * 2, H + 2); c.lineTo(-W, H + 2); c.fill();
+    c.fillStyle = '#6a6870';
+    c.fillRect(-W, H * 0.865, W * 3, H * 0.02);
+    c.fillStyle = '#8a8890';
+    c.fillRect(-W, H * 0.86, W * 3, H * 0.008);
+    // props (AC units, vents, dishes)
     for (var k = 0; k < props.length; k++) {
       var p = props[k], q = proj(p.wx, 0, p.z);
       if (q.x < -W * 0.5 || q.x > W * 1.5) continue;
-      if (p.t === 'cactus') drawSaguaro(c, q.x, q.y, q.s);
-      else if (p.t === 'palm') drawPalm(c, q.x, q.y, q.s);
-      else drawBush(c, q.x, q.y, q.s, p.t === 'rock');
+      if (p.t === 'ac') {
+        var aw = 0.9 * q.s, ah = 0.55 * q.s;
+        c.fillStyle = 'rgba(20,20,30,.3)'; c.beginPath(); c.ellipse(q.x, q.y, aw * 0.7, ah * 0.15, 0, 0, 7); c.fill();
+        c.fillStyle = '#7a8a98'; c.fillRect(q.x - aw / 2, q.y - ah, aw, ah);
+        c.fillStyle = '#5a6a78'; c.fillRect(q.x - aw / 2, q.y - ah, aw, ah * 0.22);
+        c.strokeStyle = '#3a4a58'; c.lineWidth = Math.max(1, 0.04 * q.s);
+        for (var f = 1; f < 4; f++) { c.beginPath(); c.moveTo(q.x - aw * 0.35, q.y - ah * (0.3 + f * 0.15)); c.lineTo(q.x + aw * 0.35, q.y - ah * (0.3 + f * 0.15)); c.stroke(); }
+        c.fillStyle = '#4a5a68'; c.beginPath(); c.arc(q.x + aw * 0.15, q.y - ah * 0.55, aw * 0.18, 0, 7); c.fill();
+      } else if (p.t === 'vent') {
+        c.fillStyle = 'rgba(20,20,30,.25)'; c.beginPath(); c.ellipse(q.x, q.y, 0.35 * q.s, 0.08 * q.s, 0, 0, 7); c.fill();
+        c.fillStyle = '#6a7078'; c.beginPath(); c.ellipse(q.x, q.y - 0.08 * q.s, 0.32 * q.s, 0.12 * q.s, 0, 0, 7); c.fill();
+        c.fillStyle = '#4a5058'; c.beginPath(); c.ellipse(q.x, q.y - 0.08 * q.s, 0.18 * q.s, 0.06 * q.s, 0, 0, 7); c.fill();
+      } else if (p.t === 'dish') {
+        c.strokeStyle = '#c0c8d0'; c.lineWidth = Math.max(1, 0.04 * q.s);
+        c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x, q.y - 0.9 * q.s); c.stroke();
+        c.fillStyle = 'rgba(200,210,220,.55)'; c.beginPath(); c.ellipse(q.x, q.y - 1.0 * q.s, 0.45 * q.s, 0.2 * q.s, -0.4, 0, 7); c.fill();
+        c.strokeStyle = '#8a90a0'; c.stroke();
+      } else {
+        c.fillStyle = '#6a6870'; c.fillRect(q.x - 0.25 * q.s, q.y - 0.35 * q.s, 0.5 * q.s, 0.35 * q.s);
+      }
     }
   }
   function drawCastle(c) {
@@ -714,18 +738,33 @@
     // earth
     c.fillStyle = '#4a90d0'; c.beginPath(); c.arc(W * 0.78, Y0 * 0.22, W * 0.06, 0, 7); c.fill();
     c.fillStyle = '#3a8a4a'; c.beginPath(); c.ellipse(W * 0.77, Y0 * 0.21, W * 0.025, W * 0.015, 0.4, 0, 7); c.fill();
-    // ground
+    // regolith deck — charcoal/ash, not icy blue
     var gg = c.createLinearGradient(0, Y0, 0, H);
-    gg.addColorStop(0, '#9aa0b8'); gg.addColorStop(0.4, '#7a8098'); gg.addColorStop(1, '#5a6078');
+    gg.addColorStop(0, '#6a6e7a'); gg.addColorStop(0.35, '#4e5260'); gg.addColorStop(0.7, '#3a3e4a'); gg.addColorStop(1, '#2e3240');
     c.fillStyle = gg; c.fillRect(-W, Y0, W * 3, H * 2);
-    c.fillStyle = 'rgba(200,210,255,.15)';
-    c.beginPath(); c.ellipse(W * 0.5, Y0 + H * 0.1, W * 0.6, H * 0.04, 0, 0, 7); c.fill();
+    // dark crater dimples (not a pale ice lot)
+    c.fillStyle = 'rgba(20,22,30,.35)';
+    [[0.22, 0.08, 0.18, 0.025], [0.72, 0.14, 0.22, 0.03], [0.45, 0.28, 0.28, 0.035],
+     [0.15, 0.4, 0.2, 0.03], [0.8, 0.36, 0.24, 0.028], [0.5, 0.5, 0.35, 0.04]].forEach(function (e) {
+      c.beginPath(); c.ellipse(W * e[0], Y0 + H * e[1], W * e[2], H * e[3], 0, 0, 7); c.fill();
+    });
+    // faint metal plate seams near camera (moon-base flooring)
+    c.strokeStyle = 'rgba(120,130,150,.22)'; c.lineWidth = 1.5;
+    for (var r = 0; r < 4; r++) {
+      var yy = Y0 + H * (0.55 + r * 0.1);
+      c.beginPath(); c.moveTo(-W, yy); c.lineTo(W * 2, yy + 3); c.stroke();
+    }
+    c.strokeStyle = 'rgba(120,130,150,.16)';
+    for (var c2 = 0; c2 < 4; c2++) {
+      var xx = W * (0.15 + c2 * 0.25);
+      c.beginPath(); c.moveTo(xx, Y0 + H * 0.5); c.lineTo(xx - W * 0.04, H); c.stroke();
+    }
     for (var k = 0; k < props.length; k++) {
       var p = props[k], q = proj(p.wx, 0, p.z);
       if (q.x < -W * 0.5 || q.x > W * 1.5) continue;
       if (p.t === 'crater') {
-        c.fillStyle = 'rgba(40,40,60,.35)'; c.beginPath(); c.ellipse(q.x, q.y, 0.9 * q.s, 0.25 * q.s, 0, 0, 7); c.fill();
-        c.strokeStyle = 'rgba(60,60,80,.5)'; c.lineWidth = 2; c.beginPath(); c.ellipse(q.x, q.y, 0.9 * q.s, 0.25 * q.s, 0, 0, 7); c.stroke();
+        c.fillStyle = 'rgba(20,22,32,.45)'; c.beginPath(); c.ellipse(q.x, q.y, 0.9 * q.s, 0.25 * q.s, 0, 0, 7); c.fill();
+        c.strokeStyle = 'rgba(50,54,68,.55)'; c.lineWidth = 2; c.beginPath(); c.ellipse(q.x, q.y, 0.9 * q.s, 0.25 * q.s, 0, 0, 7); c.stroke();
       } else if (p.t === 'dome') {
         c.fillStyle = 'rgba(180,200,255,.35)'; c.beginPath(); c.arc(q.x, q.y, 0.9 * q.s, Math.PI, 0); c.fill();
         c.strokeStyle = '#39e0ff'; c.lineWidth = 2; c.stroke();
@@ -734,7 +773,7 @@
         c.strokeStyle = '#c0c8d8'; c.lineWidth = Math.max(1, 0.05 * q.s);
         c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(q.x, q.y - 2.4 * q.s); c.stroke();
         c.fillStyle = '#39e0ff'; c.beginPath(); c.arc(q.x, q.y - 2.4 * q.s, 0.12 * q.s, 0, 7); c.fill();
-      } else drawBoulder(c, q.x, q.y, q.s, 0.7, 0.35, '#8a90a8', '#6a7088');
+      } else drawBoulder(c, q.x, q.y, q.s, 0.7, 0.35, '#7a8090', '#5a6070');
     }
   }
   function drawWorld(c) {
@@ -794,10 +833,35 @@
     c.fillStyle = open ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.35)'; c.beginPath(); c.arc(x, base - hh * 0.55, Math.max(3, s * 0.08), 0, 7); c.fill();
     c.restore();
   }
+  function drawPillar(c, x, base, s, w, h) {
+    var hw = w * s / 2, hh = h * s;
+    // ground shadow
+    c.fillStyle = 'rgba(20,18,28,.35)'; c.beginPath(); c.ellipse(x, base, hw * 1.15, hh * 0.1, 0, 0, 7); c.fill();
+    // shaft
+    var g = c.createLinearGradient(x - hw, 0, x + hw, 0);
+    g.addColorStop(0, '#5a5864'); g.addColorStop(0.35, '#8a8894'); g.addColorStop(0.7, '#6e6c78'); g.addColorStop(1, '#4a4854');
+    c.fillStyle = g;
+    c.beginPath();
+    c.moveTo(x - hw * 0.85, base); c.lineTo(x - hw * 0.75, base - hh * 0.92);
+    c.lineTo(x + hw * 0.75, base - hh * 0.92); c.lineTo(x + hw * 0.85, base); c.closePath(); c.fill();
+    // capital
+    c.fillStyle = '#9a98a4';
+    c.fillRect(x - hw * 1.05, base - hh, hw * 2.1, hh * 0.1);
+    c.fillStyle = '#7a7884';
+    c.fillRect(x - hw * 0.95, base - hh * 0.92, hw * 1.9, hh * 0.06);
+    // base plinth
+    c.fillStyle = '#6a6874';
+    c.fillRect(x - hw * 1.0, base - hh * 0.08, hw * 2.0, hh * 0.08);
+    // seam lines
+    c.strokeStyle = 'rgba(30,28,36,.35)'; c.lineWidth = Math.max(1, s * 0.025);
+    c.beginPath(); c.moveTo(x - hw * 0.2, base - hh * 0.85); c.lineTo(x - hw * 0.25, base - hh * 0.12); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(x - hw * 0.55, base - hh * 0.8, hw * 0.18, hh * 0.55);
+  }
   function drawEraCover(c, x, base, s, w, h, kind) {
     if (kind === 'haystack') drawHaystack(c, x, base, s, w, h);
     else if (kind === 'barrel') drawBarrel(c, x, base, s, w, h);
     else if (kind === 'shield') drawShieldPad(c, x, base, s, w, h);
+    else if (kind === 'pillar') drawPillar(c, x, base, s, w, h);
     else if (kind === 'halftone') drawCover(c, x, base, w * s, h * s, DPR, true);
     else drawBigRock(c, x, base, s, w, h);
   }
@@ -981,6 +1045,66 @@
       c.bezierCurveTo(-0.25, -1.95, -0.1, -1.92, 0, -1.86); c.bezierCurveTo(0.1, -1.92, 0.25, -1.95, 0.23, -1.67); c.closePath(); c.fill();
       c.fillStyle = pal.band; c.fillRect(-0.23, -1.73, 0.46, 0.05);
     }
+  }
+  // US Army soldier (Desert Ops enemy) — reads as military, not cactus caricature
+  var PAL_SO = { skin: '#d4a07a', skin2: '#b88060', uni: '#4a5a3a', uni2: '#3a4a2a', uni3: '#5a6a48',
+    helm: '#3a4a30', helm2: '#2a3a22', boot: '#2a2218', strap: '#2a3020', gun: '#2a2a30',
+    eye: '#fff', pupil: '#1d1a24', mouth: '#5a2a1a', patch: '#c9a24a' };
+  var PAL_SOW = {}; Object.keys(PAL_SO).forEach(function (k) { PAL_SOW[k] = '#fff'; });
+  function drawSoldier(c, P, aiming, hurt) {
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    // boots + legs
+    c.fillStyle = P.boot;
+    c.beginPath(); c.ellipse(-0.14, -0.05, 0.13, 0.07, 0, 0, 7); c.ellipse(0.14, -0.05, 0.13, 0.07, 0, 0, 7); c.fill();
+    ln(c, -0.12, -0.08, -0.12, -0.5, 0.16, P.uni); ln(c, 0.12, -0.08, 0.12, -0.5, 0.16, P.uni);
+    // blouse / torso
+    c.fillStyle = P.uni; c.beginPath();
+    c.moveTo(-0.32, -0.45); c.lineTo(-0.34, -1.1); c.quadraticCurveTo(-0.15, -1.22, 0, -1.24);
+    c.quadraticCurveTo(0.15, -1.22, 0.34, -1.1); c.lineTo(0.32, -0.45); c.closePath(); c.fill();
+    c.fillStyle = P.uni2; c.fillRect(-0.32, -0.55, 0.64, 0.1); // belt
+    c.fillStyle = P.patch; c.fillRect(-0.22, -0.53, 0.1, 0.06); // buckle
+    // pocket flaps
+    c.fillStyle = P.uni3; c.fillRect(-0.26, -0.85, 0.14, 0.12); c.fillRect(0.12, -0.85, 0.14, 0.12);
+    // shoulders / straps
+    c.fillStyle = P.strap; c.fillRect(-0.3, -1.12, 0.12, 0.08); c.fillRect(0.18, -1.12, 0.12, 0.08);
+    // left arm
+    ln(c, -0.3, -1.05, -0.48, -0.7, 0.13, P.uni); c.fillStyle = P.skin; c.beginPath(); c.arc(-0.48, -0.66, 0.07, 0, 7); c.fill();
+    // right arm + rifle
+    c.strokeStyle = P.gun; c.fillStyle = P.gun;
+    if (aiming) {
+      ln(c, 0.28, -1.05, 0.42, -0.95, 0.12, P.uni);
+      c.fillStyle = P.skin; c.beginPath(); c.arc(0.44, -0.92, 0.06, 0, 7); c.fill();
+      c.strokeStyle = P.gun; c.lineWidth = 0.08; c.beginPath(); c.moveTo(0.2, -0.95); c.lineTo(0.55, -1.05); c.stroke();
+      c.lineWidth = 0.05; c.beginPath(); c.moveTo(0.55, -1.05); c.lineTo(0.72, -1.08); c.stroke();
+      c.fillStyle = P.gun; c.beginPath(); c.arc(0.4, -1.02, 0.05, 0, 7); c.fill(); // optic
+    } else {
+      ln(c, 0.28, -1.05, 0.4, -0.72, 0.12, P.uni);
+      c.fillStyle = P.skin; c.beginPath(); c.arc(0.4, -0.68, 0.07, 0, 7); c.fill();
+      c.strokeStyle = P.gun; c.lineWidth = 0.07; c.beginPath(); c.moveTo(0.38, -0.5); c.lineTo(0.42, -1.45); c.stroke();
+      c.lineWidth = 0.05; c.beginPath(); c.moveTo(0.35, -1.1); c.lineTo(0.45, -1.25); c.stroke();
+    }
+    // neck + face
+    c.fillStyle = P.skin; c.fillRect(-0.08, -1.28, 0.16, 0.1);
+    c.beginPath(); c.ellipse(0, -1.48, 0.22, 0.24, 0, 0, 7); c.fill();
+    if (hurt) {
+      c.strokeStyle = P.pupil; c.lineWidth = 0.03;
+      c.beginPath();
+      c.moveTo(-0.1, -1.52); c.lineTo(-0.04, -1.46); c.moveTo(-0.04, -1.52); c.lineTo(-0.1, -1.46);
+      c.moveTo(0.04, -1.52); c.lineTo(0.1, -1.46); c.moveTo(0.1, -1.52); c.lineTo(0.04, -1.46); c.stroke();
+    } else {
+      c.fillStyle = P.eye; c.beginPath(); c.arc(-0.08, -1.5, 0.055, 0, 7); c.arc(0.08, -1.5, 0.055, 0, 7); c.fill();
+      c.fillStyle = P.pupil; c.beginPath(); c.arc(-0.07, -1.49, 0.028, 0, 7); c.arc(0.09, -1.49, 0.028, 0, 7); c.fill();
+      c.strokeStyle = P.mouth; c.lineWidth = 0.025; c.beginPath(); c.arc(0, -1.38, 0.06, 0.2, Math.PI - 0.2); c.stroke();
+    }
+    // PASGT / ACH helmet
+    c.fillStyle = P.helm; c.beginPath();
+    c.ellipse(0, -1.58, 0.28, 0.22, 0, Math.PI, 0); c.fill();
+    c.beginPath(); c.moveTo(-0.28, -1.58); c.quadraticCurveTo(0, -1.82, 0.28, -1.58); c.lineTo(0.26, -1.52); c.quadraticCurveTo(0, -1.7, -0.26, -1.52); c.closePath(); c.fill();
+    c.fillStyle = P.helm2; c.fillRect(-0.28, -1.6, 0.56, 0.06);
+    // chin strap
+    c.strokeStyle = P.strap; c.lineWidth = 0.025;
+    c.beginPath(); c.moveTo(-0.2, -1.55); c.quadraticCurveTo(-0.22, -1.35, -0.12, -1.3); c.stroke();
+    c.beginPath(); c.moveTo(0.2, -1.55); c.quadraticCurveTo(0.22, -1.35, 0.12, -1.3); c.stroke();
   }
   function drawHat(c, x, y, s, rot) {
     c.save(); c.translate(x, y); c.rotate(rot); c.scale(s, s); c.translate(0, 1.75);
@@ -1189,7 +1313,10 @@
     c.translate(g.x, g.foot + g.sink * g.s); c.scale(g.s, g.s);
     var hurt = e.hitT > 0 || G.ko === 'bot';
     var aiming = enemyAiming(), wind = G.phase === 'botFire' && G.tell > 0, look = era.bot.look;
-    if (look === 'cactus') {
+    if (look === 'soldier') {
+      drawSoldier(c, PAL_SO, aiming, hurt);
+      if (e.flash > 0) { c.globalAlpha = Math.min(0.85, e.flash); drawSoldier(c, PAL_SOW, aiming, hurt); c.globalAlpha = 1; }
+    } else if (look === 'cactus') {
       var hat = e.hatOff <= 0;
       drawCactusMan(c, PAL_E, aiming, hat, hurt);
       if (e.flash > 0) { c.globalAlpha = Math.min(0.9, e.flash); drawCactusMan(c, PAL_W, aiming, hat, hurt); c.globalAlpha = 1; }
@@ -1324,6 +1451,7 @@
     var kind = G.era.cover.kind, x = W * pSlots()[i] + 10 * PS, base = PY - 30 * PS;
     if (kind === 'halftone') return { x: x, base: PY - 42 * PS, w: 210 * PS, tall: 220 * PS, low: 100 * PS };
     if (kind === 'barrel') return { x: x, base: base, w: 150 * PS, tall: 150 * PS, low: 150 * PS };
+    if (kind === 'pillar') return { x: x, base: base, w: 120 * PS, tall: 210 * PS, low: 210 * PS };
     if (kind === 'shield') return { x: x, base: base, w: 180 * PS, tall: 160 * PS, low: 160 * PS };
     if (kind === 'haystack') return { x: x, base: base, w: 190 * PS, tall: 155 * PS, low: 155 * PS };
     return { x: x, base: base, w: 196 * PS, tall: 150 * PS, low: 150 * PS };
@@ -1745,7 +1873,7 @@
     if (bgEra !== era) { bgEra = era; buildScenery(); coverCache.clear(); resize(); }
     placePlayer(Math.floor(pSlots().length / 2));
     $('avP').innerHTML = AVATARS[era.player.outfit] || AVATARS.modern;
-    $('avB').innerHTML = AVATARS[era.bot.look] || AVATARS.cactus;
+    $('avB').innerHTML = AVATARS[era.bot.look] || AVATARS.soldier || AVATARS.cactus;
     $('nmB').textContent = era.bot.name; $('oBn').textContent = era.bot.name.toUpperCase();
     var ic = AMMO_ICONS[era.ammo] || AMMO_ICONS.bullet, h = '';
     for (var i = 0; i < CFG.shots; i++) h += '<i>' + ic + '</i>';
@@ -2327,6 +2455,7 @@
     caveman: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#8fd0ff"/><rect y="38" width="48" height="10" fill="#f0a030"/><ellipse cx="24" cy="26" rx="12" ry="12" fill="#e8a878"/><path d="M10 25l-3-8 6 1-1-8 6 4 2-7 4 6 4-6 2 7 6-4-1 8 6-1-3 8c-3-6-8-8-14-8s-11 2-14 8z" fill="#6b3a1e"/><path d="M14 33q10 10 20 0q-4 6-10 6t-10-6z" fill="#6b3a1e"/><path d="M16 22h16" stroke="#6b3a1e" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="26" r="2.6" fill="#fff"/><circle cx="28" cy="26" r="2.6" fill="#fff"/><circle cx="20.5" cy="26.3" r="1.3" fill="#1d1a24"/><circle cx="28.5" cy="26.3" r="1.3" fill="#1d1a24"/><circle cx="24" cy="30" r="3.2" fill="#d98a60"/><rect x="22" y="34" width="2.4" height="2.4" fill="#fff"/></svg>',
     modern: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7fc8ff"/><path d="M14 48c0-8 4-12 10-12s10 4 10 12z" fill="#b8384b"/><ellipse cx="24" cy="24" rx="11" ry="12" fill="#f5b595"/><path d="M11 19c2-8 8-11 14-11s11 2 13 8l-2 1c-3-3-7-4-11-4s-9 2-12 7z" fill="#e8434a"/><circle cx="20" cy="25" r="1.8" fill="#2b2230"/><circle cx="28" cy="25" r="1.8" fill="#2b2230"/><path d="M20 30q4 3 8 0" stroke="#7a3b35" stroke-width="1.6" fill="none"/></svg>',
     cactus: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><rect x="13" y="16" width="22" height="34" rx="11" fill="#4cb05f"/><path d="M8 17c0-2 7-4 16-4s16 2 16 4-7 3-16 3S8 19 8 17z" fill="#b8652d"/><path d="M15 15c0-6 4-9 9-9s9 3 9 9z" fill="#c9793a"/><circle cx="20" cy="26" r="3.2" fill="#fff"/><circle cx="28" cy="26" r="3.2" fill="#fff"/><circle cx="20.6" cy="26.4" r="1.6" fill="#1d1a24"/><circle cx="28.6" cy="26.4" r="1.6" fill="#1d1a24"/></svg>',
+    soldier: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#6a7080"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#4a5a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d4a07a"/><path d="M10 20c2-8 8-12 14-12s12 4 14 12l-3 1c-2-4-6-6-11-6s-9 2-11 7z" fill="#3a4a30"/><rect x="12" y="18" width="24" height="5" fill="#2a3a22"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     knight: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7ec3f0"/><rect y="40" width="48" height="8" fill="#6ab04c"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#c0c8d4"/><ellipse cx="24" cy="24" rx="12" ry="13" fill="#c0c8d4"/><rect x="14" y="22" width="20" height="5" fill="#2a2a35"/><path d="M22 10q4-8 8 0" fill="#e8434a"/><circle cx="20" cy="28" r="1.4" fill="#1d1a24"/><circle cx="28" cy="28" r="1.4" fill="#1d1a24"/></svg>',
     cowpoke: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#b86a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#f0b088"/><path d="M8 18c0-2 7-3 16-3s16 1 16 3-7 2-16 2S8 20 8 18z" fill="#2a1810"/><path d="M16 17c0-6 3-9 8-9s8 3 8 9z" fill="#3a2418"/><rect x="16" y="20" width="16" height="3" fill="#c9a24a"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     space: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1740"/><circle cx="10" cy="10" r="1" fill="#fff"/><circle cx="40" cy="14" r="1" fill="#fff"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#6a5ad0"/><ellipse cx="24" cy="24" rx="13" ry="14" fill="rgba(180,220,255,.55)" stroke="#d0d8e8" stroke-width="3"/><circle cx="24" cy="25" r="8" fill="#f0b088"/><rect x="18" y="34" width="12" height="4" rx="2" fill="#39e0ff"/></svg>',
@@ -2344,7 +2473,7 @@
     stone: '<svg viewBox="0 0 58 58"><defs><linearGradient id="i1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a2c8a"/><stop offset="1" stop-color="#ffb36a"/></linearGradient></defs><rect width="58" height="58" fill="url(#i1)"/><circle cx="22" cy="40" r="10" fill="#ffe08a"/><rect y="40" width="58" height="18" fill="#e8955e"/><path d="M8 48c0-9 6-13 14-13s12 4 13 13z" fill="#b88c70"/><path d="M14 30Q30 6 48 26" stroke="#fff" stroke-width="2" stroke-dasharray="2 4" fill="none"/><path d="M40 14l10 16" stroke="#a0663a" stroke-width="3" stroke-linecap="round"/><path d="M37 9l5 2-2 5z" fill="#c4c8d0"/></svg>',
     castle: '<svg viewBox="0 0 58 58"><rect width="58" height="58" fill="#7ec3f0"/><rect y="42" width="58" height="16" fill="#6ab04c"/><path d="M12 44V20h6v4h5v-4h6v4h5v-4h6v24z" fill="#b0a898"/><rect x="24" y="32" width="10" height="12" rx="5" fill="#5a4a3a"/><path d="M6 12l40 10" stroke="#8a5a3a" stroke-width="2.4"/><path d="M46 22l-6 1 3-5z" fill="#ccc"/></svg>',
     wildwest: '<svg viewBox="0 0 58 58"><rect width="58" height="58" fill="#ffc46b"/><rect y="40" width="58" height="18" fill="#d9a066"/><rect x="18" y="24" width="20" height="24" rx="6" fill="#a0663a"/><path d="M18 30h20M18 42h20" stroke="#5a3a20" stroke-width="2.4"/><path d="M46 44V26m0 8h-4v-5m4 8h4v-6" stroke="#3f9a5c" stroke-width="3.4" stroke-linecap="round" fill="none"/></svg>',
-    modern: '<svg viewBox="0 0 58 58"><defs><linearGradient id="i4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6a2f92"/><stop offset="1" stop-color="#ffb35c"/></linearGradient></defs><rect width="58" height="58" fill="url(#i4)"/><rect y="40" width="58" height="18" fill="#ec8d84"/><rect x="16" y="32" width="26" height="12" rx="6" fill="#ffd83a"/><circle cx="29" cy="24" r="11" stroke="#fff" stroke-width="3" fill="none"/><path d="M29 9v9M29 30v9M14 24h9M35 24h9" stroke="#fff" stroke-width="3"/></svg>',
+    modern: '<svg viewBox="0 0 58 58"><defs><linearGradient id="i4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2870"/><stop offset="1" stop-color="#f0b070"/></linearGradient></defs><rect width="58" height="58" fill="url(#i4)"/><rect y="38" width="58" height="20" fill="#6e6c74"/><rect x="8" y="18" width="8" height="28" fill="#5a5864"/><rect x="25" y="14" width="8" height="32" fill="#5a5864"/><rect x="42" y="18" width="8" height="28" fill="#5a5864"/><rect x="5" y="16" width="14" height="5" fill="#8a8894"/><rect x="22" y="12" width="14" height="5" fill="#8a8894"/><rect x="39" y="16" width="14" height="5" fill="#8a8894"/><circle cx="46" cy="10" r="4" fill="#ffe08a"/></svg>',
     space: '<svg viewBox="0 0 58 58"><rect width="58" height="58" fill="#1a1740"/><circle cx="10" cy="10" r="1.2" fill="#fff"/><circle cx="46" cy="16" r="1" fill="#fff"/><circle cx="30" cy="6" r="1" fill="#fff"/><circle cx="40" cy="32" r="9" fill="#b58cff"/><ellipse cx="40" cy="32" rx="15" ry="4" stroke="#ffd23f" stroke-width="2" fill="none"/><rect y="46" width="58" height="12" fill="#9aa0b8"/><path d="M6 36l18-6" stroke="#39e0ff" stroke-width="3" stroke-linecap="round"/></svg>'
   };
   function weaponIcon(w) { return '<svg viewBox="0 0 56 56"><rect width="56" height="56" rx="10" fill="#3a2a5e"/><path d="M12 46L40 16" stroke="#a0663a" stroke-width="5" stroke-linecap="round"/><path d="M36 20l3-3" stroke="#7a4a2e" stroke-width="8"/><path d="M38 8l10 2-2 10z" fill="' + (w.tip || '#ccc') + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/></svg>'; }
