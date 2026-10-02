@@ -12,7 +12,7 @@ A cartoon duel through history. Hide, aim, toss — phone-first (390×844). Plai
 | 2 | Castle | Bow & arrows (faster arc) | Haystacks | Meadow + keep | Sir Wobblebottom |
 | 3 | Wild West | Musket (nearly straight, slow reload) | Barrels | Saloon town | Dusty Pete |
 | 4 | Desert Ops | Scoped rifle (hitscan + hold-to-zoom) | Yellow dotted mats | Pink desert sunset | Sgt. Cactus |
-| 5 | Moon Base | Laser blaster (instant) | Energy shields (can block) | Moon base | Zorp |
+| 5 | Moon Base | Laser blaster (instant) | Energy shields (**blockChance 0.20**, free window after a block) | Moon base | Zorp |
 
 All five are playable. Unlock with trophies: **500 / 1,250 / 2,250 / 3,500**.
 
@@ -41,6 +41,20 @@ Aim Δ = −finger Δ × `sens` (÷ zoom while scoped). Lower = less twitchy for
 | Desert Ops | **0.85** | was 1.25; ÷ zoom while held |
 | Moon Base | **0.78** | was 1.10; ÷ zoom while held |
 
+## Characters & ammo (per era)
+
+Each era has its **own player silhouette + held weapon** and **enemy look** (not a shared caveman body with a hat swap):
+
+| Era | Player | Enemy | Projectile |
+|-----|--------|-------|------------|
+| Stone Age | Caveman + overhead spear | Ugga Bunga (caveman) | Spear |
+| Castle | Knight in plate + bow | Sir Wobblebottom (knight + helm/plume) | Arrow (fletching) |
+| Wild West | Cowpoke + stetson + musket | Dusty Pete (bandit + bandana) | Musket ball + smoke puff |
+| Desert Ops | Soldier + scoped rifle | Sgt. Cactus (cactus) | Rifle tracer |
+| Moon Base | Space suit + dome helm + blaster | Zorp (big-headed alien) | Cyan laser bolt |
+
+Moon shields: **`blockChance` 0.20** (was 0.35). A successful block opens a free window so the next careful shot can land (shields dim while open).
+
 ## Progression & fresh save
 
 - **Trophies**, **win streaks**, and **pretend coins** (shop only — nothing is sold for money).
@@ -60,6 +74,7 @@ Numbers live in `BALANCE` at the top of `game.js`.
 | Shots / hide / rounds | 3 / 5 s / 5 (+ up to 3 sudden death) |
 | Bot base accuracy (`baseAcc`) | Stone 50% · Castle 55% · Wild West 60% · Desert Ops 65% · Moon 70% (progressive; +trophies, cap 78%) |
 | Bot retarget on slide | **60%** (`bot.retarget`) if settled **≥0.35 s** on the new rock (`retargetSettle`); slide duration **0.25 s** |
+| Moon shield `blockChance` | **0.20** (was 0.35); after a block the next body/head shot is free (`shieldOpen`) |
 
 Head hits deal ×2. Duck stamina drains while held on the bot turn (unchanged). Sliding away still works, but the bot re-aims more often so free slide-dodges are rarer.
 
