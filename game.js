@@ -107,7 +107,7 @@
       player: { outfit: 'cowpoke' }, ammo: 'ball',
       hints: { aim: 'Pull DOWN to aim · slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
     { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: true, scene: 'desert',
-      cover: { kind: 'pillar', tall: 1.55, low: 1.55, halfW: 0.55, spots: [-2.5, 0, 2.5] },
+      cover: { kind: 'pillar', tall: 0.90, low: 0.90, halfW: 0.55, spots: [-2.5, 0, 2.5] },
       playerCover: { kind: 'sandbag' },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6.5,
       shot: { kind: 'hitscan', zoom: 2.3, sens: 0.85, cool: 0.45 },
