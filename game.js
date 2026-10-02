@@ -1319,8 +1319,11 @@
     c.fillStyle = P.skin; c.beginPath(); c.ellipse(0, -1.55, 0.48, 0.55, 0, 0, 7); c.fill();
     c.fillStyle = P.hair; c.beginPath(); c.ellipse(0, -1.95, 0.18, 0.12, 0, 0, 7); c.fill(); // antenna bulb
     ln(c, 0, -1.85, 0, -2.05, 0.04, P.hair);
-    c.fillStyle = '#1d1a24'; c.beginPath(); c.ellipse(-0.18, -1.55, 0.14, 0.22, -0.15, 0, 7); c.ellipse(0.18, -1.55, 0.14, 0.22, 0.15, 0, 7); c.fill();
-    c.fillStyle = '#39e0ff'; c.beginPath(); c.arc(-0.18, -1.55, 0.05, 0, 7); c.arc(0.18, -1.55, 0.05, 0, 7); c.fill();
+    // two distinct eyes (not a horizontal visor/eye-slit band)
+    c.fillStyle = '#1d1a24'; c.beginPath(); c.ellipse(-0.2, -1.55, 0.12, 0.18, -0.12, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(0.2, -1.55, 0.12, 0.18, 0.12, 0, 7); c.fill();
+    c.fillStyle = '#39e0ff'; c.beginPath(); c.arc(-0.2, -1.55, 0.045, 0, 7); c.fill();
+    c.beginPath(); c.arc(0.2, -1.55, 0.045, 0, 7); c.fill();
     if (hurt) { c.strokeStyle = '#fff'; c.lineWidth = 0.04; c.beginPath(); c.arc(0.2, -1.85, 0.08, 0, 7); c.stroke(); }
     else { c.strokeStyle = P.spot; c.lineWidth = 0.03; c.beginPath(); c.arc(0, -1.35, 0.08, 0.2, Math.PI - 0.2); c.stroke(); }
     c.restore();
@@ -1598,7 +1601,7 @@
   function drawPlayerSpace(c, look, tip, k, rec, armed, white) {
     c.lineCap = 'round'; c.lineJoin = 'round';
     var suit = white ? '#fff' : (look.tunic || '#6a5ad0'), suit2 = white ? '#fff' : (look.spot || '#3a2a90');
-    var skin = white ? '#fff' : '#f0b088', hipY = drawPlayerLegsBase(c, { skin: suit }, k, white ? '#fff' : '#2a1840', suit);
+    var hipY = drawPlayerLegsBase(c, { skin: suit }, k, white ? '#fff' : '#2a1840', suit);
     var sh = hipY - 112 + rec * 6, headY = sh - 42, kick = rec * 10;
     c.fillStyle = suit; c.beginPath(); if (c.roundRect) c.roundRect(-48, hipY - 30, 96, 48, 16); else c.rect(-48, hipY - 30, 96, 48); c.fill();
     c.fillStyle = suit; c.beginPath();
@@ -1610,10 +1613,13 @@
     c.fillStyle = suit2; c.beginPath(); if (c.roundRect) c.roundRect(-36, sh + 8, 72, 70, 12); else c.rect(-36, sh + 8, 72, 70); c.fill();
     // left arm
     line(c, -52, sh + 4, -36, sh - 36, 22, suit); line(c, -36, sh - 36, 8, sh - 52, 16, suit);
-    // dome helmet
-    c.fillStyle = white ? '#fff' : 'rgba(180,220,255,.55)'; c.beginPath(); c.ellipse(0, headY, 36, 38, 0, 0, 7); c.fill();
-    c.strokeStyle = white ? '#fff' : '#d0d8e8'; c.lineWidth = 6; c.beginPath(); c.ellipse(0, headY, 36, 38, 0, 0, 7); c.stroke();
-    c.fillStyle = skin; c.beginPath(); c.arc(0, headY + 4, 22, 0, 7); c.fill();
+    // solid opaque dome helmet (rear) — no translucent face / visor eye-slit band
+    c.fillStyle = white ? '#fff' : '#c8d8ec'; c.beginPath(); c.ellipse(0, headY, 36, 38, 0, 0, 7); c.fill();
+    c.strokeStyle = white ? '#fff' : '#a8b8cc'; c.lineWidth = 5; c.beginPath(); c.ellipse(0, headY, 36, 38, 0, 0, 7); c.stroke();
+    if (!white) {
+      c.fillStyle = 'rgba(255,255,255,.42)'; c.beginPath(); c.ellipse(-10, headY - 12, 14, 12, -0.4, 0, 7); c.fill();
+      c.fillStyle = 'rgba(57,224,255,.22)'; c.beginPath(); c.ellipse(8, headY + 6, 10, 8, 0.2, 0, 7); c.fill();
+    }
     // blaster (chunky pistol — not a long rifle); always held
     var bk2 = armed ? kick : kick + 24;
     line(c, 40, sh + 10 + bk2, 48, sh - 20 + bk2, 16, white ? '#fff' : '#5a6a80');
@@ -2490,9 +2496,9 @@
     soldier: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#6a7080"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#4a5a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d4a07a"/><path d="M10 20c2-8 8-12 14-12s12 4 14 12l-3 1c-2-4-6-6-11-6s-9 2-11 7z" fill="#3a4a30"/><rect x="12" y="18" width="24" height="5" fill="#2a3a22"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     knight: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7ec3f0"/><rect y="40" width="48" height="8" fill="#6ab04c"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#c0c8d4"/><ellipse cx="24" cy="24" rx="12" ry="13" fill="#c0c8d4"/><rect x="14" y="22" width="20" height="5" fill="#2a2a35"/><path d="M22 10q4-8 8 0" fill="#e8434a"/><circle cx="20" cy="28" r="1.4" fill="#1d1a24"/><circle cx="28" cy="28" r="1.4" fill="#1d1a24"/></svg>',
     cowpoke: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#b86a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#f0b088"/><path d="M8 18c0-2 7-3 16-3s16 1 16 3-7 2-16 2S8 20 8 18z" fill="#2a1810"/><path d="M16 17c0-6 3-9 8-9s8 3 8 9z" fill="#3a2418"/><rect x="16" y="20" width="16" height="3" fill="#c9a24a"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
-    space: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1740"/><circle cx="10" cy="10" r="1" fill="#fff"/><circle cx="40" cy="14" r="1" fill="#fff"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#6a5ad0"/><ellipse cx="24" cy="24" rx="13" ry="14" fill="rgba(180,220,255,.55)" stroke="#d0d8e8" stroke-width="3"/><circle cx="24" cy="25" r="8" fill="#f0b088"/><rect x="18" y="34" width="12" height="4" rx="2" fill="#39e0ff"/></svg>',
+    space: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1740"/><circle cx="10" cy="10" r="1" fill="#fff"/><circle cx="40" cy="14" r="1" fill="#fff"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#6a5ad0"/><ellipse cx="24" cy="24" rx="13" ry="14" fill="#c8d8ec" stroke="#a8b8cc" stroke-width="3"/><ellipse cx="18" cy="18" rx="5" ry="4" fill="rgba(255,255,255,.45)"/><rect x="18" y="34" width="12" height="4" rx="2" fill="#39e0ff"/></svg>',
     bandit: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#5a3a28"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d8a070"/><path d="M8 18c0-2 7-3 16-3s16 1 16 3-7 2-16 2S8 20 8 18z" fill="#2a1810"/><path d="M16 17c0-6 3-9 8-9s8 3 8 9z" fill="#3a2418"/><path d="M14 32h20l-3 5H17z" fill="#c9a24a"/><circle cx="20" cy="26" r="1.6" fill="#1d1a24"/><circle cx="28" cy="26" r="1.6" fill="#1d1a24"/></svg>',
-    alien: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1740"/><circle cx="12" cy="8" r="1" fill="#fff"/><path d="M16 48c0-6 3-10 8-10s8 4 8 10z" fill="#6a40c0"/><ellipse cx="24" cy="22" rx="14" ry="16" fill="#b8f0a0"/><ellipse cx="18" cy="22" rx="4" ry="7" fill="#1d1a24"/><ellipse cx="30" cy="22" rx="4" ry="7" fill="#1d1a24"/><circle cx="18" cy="22" r="1.5" fill="#39e0ff"/><circle cx="30" cy="22" r="1.5" fill="#39e0ff"/><circle cx="24" cy="6" r="2.5" fill="#4a2080"/></svg>'
+    alien: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1740"/><circle cx="12" cy="8" r="1" fill="#fff"/><path d="M16 48c0-6 3-10 8-10s8 4 8 10z" fill="#6a40c0"/><ellipse cx="24" cy="22" rx="14" ry="16" fill="#b8f0a0"/><ellipse cx="17" cy="22" rx="3.2" ry="5" fill="#1d1a24"/><ellipse cx="31" cy="22" rx="3.2" ry="5" fill="#1d1a24"/><circle cx="17" cy="22" r="1.3" fill="#39e0ff"/><circle cx="31" cy="22" r="1.3" fill="#39e0ff"/><circle cx="24" cy="6" r="2.5" fill="#4a2080"/></svg>'
   };
   var AMMO_ICONS = {
     spear: '<svg viewBox="0 0 16 46"><path d="M8 1l5 11H3z" fill="#c4c8d0" stroke="#6e7280" stroke-width="1"/><rect x="6.5" y="11" width="3" height="34" rx="1.5" fill="#a0663a"/><rect x="5.5" y="12" width="5" height="4" fill="#7a4a2e"/></svg>',
