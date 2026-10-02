@@ -21,12 +21,25 @@ All five are playable. Unlock with trophies: **500 / 1,250 / 2,250 / 3,500**.
 1. Tap **PLAY**, pick an unlocked era.
 2. **Hide (5 s):** the enemy scurries between 3 covers — watch where they stop.
 3. **Your turn:** **3 shots, no time limit.** Turn ends when the 3rd projectile resolves.
-   - Arc eras: hold, aim (often **above**), release. Dotted guide + ring.
-   - Desert Ops / Moon: drag to aim, hold to zoom, release to fire.
+   - **Pull-down slingshot aim (all eras):** press in the throw area, **pull DOWN** (and sideways) — the aim guide / reticle moves the **opposite** way (pull down → aim up toward the enemy). Finger stays low so it doesn’t cover the target. **Release to fire.**
+   - Arc eras (Stone / Castle / Wild West): dotted guide + ring; the ring still needs to sit on (or a bit above) the enemy for arcs.
+   - Desert Ops / Moon: same pull-down aim; hold to zoom, release to fire.
 4. **Their turn:** slide **◀ ▶** between your 3 covers or hold **DUCK** when they wind up / glint.
 5. **KO** or most damage after **5 rounds** (tie → sudden death).
 
 Controls: touch aim, ◀ ▶ move, DUCK; desktop also supports mouse, arrows/A/D, Space. Sound resumes after an iPhone call or app switch (the 🔊/🔇 mute toggle is remembered).
+
+### Aim sensitivity (`shot.sens`)
+
+Aim Δ = −finger Δ × `sens` (÷ zoom while scoped). Lower = less twitchy for kids.
+
+| Era | sens | notes |
+|-----|------|-------|
+| Stone Age | **0.70** | slightly softened |
+| Castle | **0.48** | softest — reported too twitchy for ~7–11 |
+| Wild West | **0.62** | softened |
+| Desert Ops | **0.85** | was 1.25; ÷ zoom while held |
+| Moon Base | **0.78** | was 1.10; ÷ zoom while held |
 
 ## Progression & fresh save
 

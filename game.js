@@ -78,47 +78,50 @@
   // =====================================================================
   // ERAS: per-era scene, weapon physics, cover, bot. Only built:true is playable.
   // =====================================================================
+  // Aim: pull-down slingshot. Finger drag moves aim the OPPOSITE way (pull down → aim up
+  // toward the enemy). sens = aim-move / finger-move (lower = less twitchy). Castle is softest for kids.
+  // Quiet QA unlock (session only, not a public feature): ?admin=1 or ?unlock=all
   var ERAS = [
     { id: 'stone', name: 'Stone Age', weapon: 'Spear', built: true, scene: 'canyon',
       cover: { kind: 'rock', tall: 0.8, low: 0.8, halfW: 1.0, spots: [-2.4, 0, 2.4] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 5, bannerHold: 2.2,
-      shot: { kind: 'arc', speed: 7.6, g: 5, guide: 0.55, len: 0.9, cool: 0.6, ring: true },
+      shot: { kind: 'arc', speed: 7.6, g: 5, guide: 0.55, len: 0.9, cool: 0.6, ring: true, sens: 0.70 },
       botTime: 8.5, dist: [8, 10], agility: 0.4,
       bot: { name: 'Ugga Bunga', look: 'caveman', tell: 'windup', flight: 0.75 },
       player: { outfit: 'cave' }, ammo: 'spear',
-      hints: { aim: 'Find him, aim above him, let go to throw', bot: 'He aims at your rock: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · let go to throw', bot: 'He aims at your rock: slide ◀ ▶ or DUCK!' } },
     { id: 'castle', name: 'Castle', weapon: 'Bow & arrows', built: true, scene: 'castle',
       cover: { kind: 'haystack', tall: 1.0, low: 1.0, halfW: 1.0, spots: [-2.6, 0, 2.6] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 5.5,
-      shot: { kind: 'arc', speed: 16, g: 7, guide: 0.4, len: 0.75, cool: 0.5, ring: true },
+      shot: { kind: 'arc', speed: 16, g: 7, guide: 0.4, len: 0.75, cool: 0.5, ring: true, sens: 0.48 },
       botTime: 8, dist: [10, 13], agility: 0.55,
       bot: { name: 'Sir Wobblebottom', look: 'knight', tell: 'windup', flight: 0.55 },
       player: { outfit: 'knight' }, ammo: 'arrow',
-      hints: { aim: 'Aim a little above, let go to shoot', bot: 'He aims at your hay: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · let go to shoot', bot: 'He aims at your hay: slide ◀ ▶ or DUCK!' } },
     { id: 'wildwest', name: 'Wild West', weapon: 'Musket', built: true, scene: 'saloon',
       cover: { kind: 'barrel', tall: 1.0, low: 1.0, halfW: 0.7, spots: [-2.5, 0, 2.5] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6,
-      shot: { kind: 'arc', speed: 40, g: 3, guide: 0.22, len: 0.25, cool: 1.2, ring: true },
+      shot: { kind: 'arc', speed: 40, g: 3, guide: 0.22, len: 0.25, cool: 1.2, ring: true, sens: 0.62 },
       botTime: 7.5, dist: [11, 14], agility: 0.65,
       bot: { name: 'Dusty Pete', look: 'bandit', tell: 'glint', flight: 0.28 },
       player: { outfit: 'cowpoke' }, ammo: 'ball',
-      hints: { aim: 'Nearly straight shots, slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
     { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: true, scene: 'desert',
       cover: { kind: 'halftone', tall: 2.3, low: 0.7, halfW: 1.15, spots: [-2.5, 0, 2.5] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6.5,
-      shot: { kind: 'hitscan', zoom: 2.3, sens: 1.25, cool: 0.45 },
+      shot: { kind: 'hitscan', zoom: 2.3, sens: 0.85, cool: 0.45 },
       botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
       bot: { name: 'Sgt. Cactus', look: 'cactus', tell: 'glint', flight: 0 },
       player: { outfit: 'modern' }, ammo: 'bullet',
-      hints: { aim: 'Drag to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
     { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: true, scene: 'moon',
       cover: { kind: 'shield', tall: 1.25, low: 1.25, halfW: 1.0, spots: [-2.4, 0, 2.4], blockChance: 0.35 },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 7,
-      shot: { kind: 'hitscan', zoom: 1.6, sens: 1.1, cool: 0.35 },
+      shot: { kind: 'hitscan', zoom: 1.6, sens: 0.78, cool: 0.35 },
       botTime: 7, dist: [10, 12.5], agility: 0.9,
       bot: { name: 'Zorp', look: 'alien', tell: 'glint', flight: 0 },
       player: { outfit: 'space' }, ammo: 'cell',
-      hints: { aim: 'Instant laser! His shield can block', bot: 'Blaster glow: slide ◀ ▶ or DUCK!' } }
+      hints: { aim: 'Pull DOWN to aim · shield can block', bot: 'Blaster glow: slide ◀ ▶ or DUCK!' } }
   ];
   var ERA_BY_ID = {}; ERAS.forEach(function (e, i) { e.idx = i; ERA_BY_ID[e.id] = e; });
 
@@ -202,6 +205,19 @@
   }
   function cloneSave(s) { return JSON.parse(JSON.stringify(s)); }
   var SAVE = loadSave();
+  // Quiet QA: ?admin=1 or ?unlock=all unlocks every era + a session coin wallet for shop tests.
+  // Does not permanently write unlocks/coins into localStorage (owned gear from buys still saves).
+  var ADMIN = false, ADMIN_COINS = 50000, sessionCoins = null;
+  try {
+    var _aq = new URLSearchParams(location.search);
+    ADMIN = _aq.get('admin') === '1' || _aq.get('unlock') === 'all';
+  } catch (e) { ADMIN = false; }
+  if (ADMIN) sessionCoins = Math.max(SAVE.coins, ADMIN_COINS);
+  function getCoins() { return sessionCoins != null ? sessionCoins : SAVE.coins; }
+  function spendCoinsOn(n, cost) {
+    if (sessionCoins != null) { sessionCoins = Math.max(0, sessionCoins - cost); return n; }
+    n.coins = Math.max(0, n.coins - cost); return n;
+  }
   // Apply a trophy change with the 0 clamp and the era floor. Returns the new save copy (not yet written).
   function withTrophies(s, delta) {
     var n = cloneSave(s), th = BALANCE.trophies.thresholds;
@@ -224,7 +240,7 @@
     return { save: n, trophyBase: base, streakBonus: bonus, delta: n.trophies - s.trophies, coins: coins, coinBonus: cb, streak: streak,
       from: s.trophies, to: n.trophies, unlockedNew: n.unlocked > s.unlocked ? ERAS[n.unlocked] : null, floored: (s.trophies + base + bonus) < n.trophies };
   }
-  function isUnlocked(i) { return i <= SAVE.unlocked; }
+  function isUnlocked(i) { return ADMIN || i <= SAVE.unlocked; }
   function nextEraInfo(t, unlocked) {
     var th = BALANCE.trophies.thresholds;
     if (unlocked >= ERAS.length - 1) return null;
@@ -1537,7 +1553,7 @@
     G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null;
     var cg = coverGeom(); G.aim.x = cg.x; G.aim.y = cg.top - 60;
     var hold = G.era.bannerHold || 0.8;
-    banner(G.era.id === 'stone' ? 'THROW! Aim above!' : (G.era.shot.kind === 'arc' ? 'THROW!' : 'SHOOT!'), 'go', hold); sfx.go();
+    banner(G.era.id === 'stone' ? 'THROW! Pull down to aim!' : (G.era.shot.kind === 'arc' ? 'THROW! Pull down!' : 'SHOOT! Pull down!'), 'go', hold); sfx.go();
   }
   function endAim() { releaseAim(); setPhase('swap'); banner('SWAP! YOUR TURN TO HIDE', 'good'); hint(''); }
   function startPlayerHide() { setPhase('playerHide'); G.countNum = 0; banner("YOU'RE HIDING"); hint(''); releaseAim(); sfx.whoosh(); G.player.stam = 1; G.player.tired = false; }
@@ -1966,16 +1982,34 @@
     buildBg();
   }
 
-  // ---------- input ----------
+  // ---------- input (pull-down slingshot aim) ----------
+  // Mapping: aim moves opposite the finger. Pull DOWN → reticle/guide goes UP toward the enemy.
+  // Finger stays low; release fires. sens on each era.shot scales aimΔ / fingerΔ.
   function pos(ev) { var r = cv.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
   function clampAim(p) { return { x: clamp(p.x, 0, W), y: clamp(p.y, H * 0.08, H * 0.92) }; }
+  function aimSens() {
+    var s = G.era.shot.sens || 0.7;
+    if (G.era.shot.kind === 'hitscan') {
+      var z = 1 + (G.era.shot.zoom - 1) * easeOut(G.scope);
+      return s / z;
+    }
+    return s;
+  }
+  function applyAimDelta(dx, dy) {
+    var k = aimSens();
+    // Slingshot invert on both axes so pull-away aims toward the enemy.
+    G.aim.x = clamp(G.aim.x - dx * k, 0, W);
+    var yLo = G.era.shot.kind === 'hitscan' ? H * 0.2 : H * 0.08;
+    var yHi = G.era.shot.kind === 'hitscan' ? H * 0.9 : H * 0.92;
+    G.aim.y = clamp(G.aim.y - dy * k, yLo, yHi);
+  }
   cv.addEventListener('pointerdown', function (ev) {
     audio(); ev.preventDefault();
     if (G.phase === 'aim') {
       if (G.pointerId !== null || !canShoot()) return;
       G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
-      var p = clampAim(pos(ev));
-      G.aim.x = p.x; G.aim.y = p.y; G.last = pos(ev); G.pressT = G.time;
+      // Do not snap aim under the finger — keep startAim reticle; drag pulls it opposite.
+      G.last = pos(ev); G.pressT = G.time;
       if (G.era.shot.kind === 'arc') G.aiming = true; else G.scopeTarget = 1;
     } else if (G.phase === 'botFire' || G.phase === 'playerHide') {
       G.ptrDuck = true; G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
@@ -1985,10 +2019,7 @@
     var p = pos(ev);
     if (ev.pointerType === 'mouse') G.hover = clampAim(p);
     if (G.phase !== 'aim' || ev.pointerId !== G.pointerId || !G.last) return;
-    if (G.era.shot.kind === 'arc') { var a = clampAim(p); G.aim.x = a.x; G.aim.y = a.y; G.last = p; return; }
-    var z = 1 + (G.era.shot.zoom - 1) * easeOut(G.scope), k = G.era.shot.sens / z;
-    G.aim.x = clamp(G.aim.x + (p.x - G.last.x) * k, 0, W);
-    G.aim.y = clamp(G.aim.y + (p.y - G.last.y) * k, H * 0.2, H * 0.9);
+    applyAimDelta(p.x - G.last.x, p.y - G.last.y);
     G.last = p;
   });
   function endPress(ev, fire) {
@@ -2073,7 +2104,7 @@
     $('mTro').textContent = fmt(SAVE.trophies);
     var pt = progressText(SAVE.trophies, SAVE.unlocked);
     $('mBar').style.width = (pt.frac * 100).toFixed(1) + '%'; $('mBarLbl').textContent = pt.label;
-    $('mCoins').textContent = fmt(SAVE.coins);
+    $('mCoins').textContent = fmt(getCoins());
     $('mStreak').textContent = (SAVE.streak > 0 ? '🔥 ' + SAVE.streak + ' win streak' : '🔥 No streak yet') + (SAVE.bestStreak > 1 ? ' · best ' + SAVE.bestStreak : '');
     $('mStreak').title = 'Best: ' + SAVE.bestStreak;
   }
@@ -2102,18 +2133,19 @@
   function shopEra() {
     var e = ERA_BY_ID[SAVE.last];
     if (e && e.built && isUnlocked(e.idx)) return e;
-    return ERAS[Math.min(SAVE.unlocked, ERAS.length - 1)];
+    var maxU = ADMIN ? ERAS.length - 1 : SAVE.unlocked;
+    return ERAS[Math.min(maxU, ERAS.length - 1)];
   }
   function itemState(kind, it, list) {
     var era = shopEra(), owned = SAVE.owned[kind].indexOf(it.id) >= 0, eq = SAVE.equip[kind][era.id] === it.id;
     if (eq) return 'equipped';
     if (owned) return 'owned';
     if (kind === 'weapons') { var i = list.indexOf(it); if (i > 0 && SAVE.owned.weapons.indexOf(list[i - 1].id) < 0) return 'locked'; }
-    return SAVE.coins >= it.cost ? 'buy' : 'poor';
+    return getCoins() >= it.cost ? 'buy' : 'poor';
   }
   function renderShop() {
     var era = shopEra(), list = BALANCE[shopTab][era.id], h = '';
-    $('sCoins').textContent = fmt(SAVE.coins);
+    $('sCoins').textContent = fmt(getCoins());
     var sub = document.querySelector('.shopEra'); if (sub) sub.textContent = era.name + ' gear';
     Array.prototype.forEach.call(document.querySelectorAll('#shopTabs button'), function (b) { setClass(b, 'on', b.getAttribute('data-tab') === shopTab); });
     list.forEach(function (it, i) {
@@ -2139,7 +2171,7 @@
     if (st === 'locked') return 'locked';
     if (st === 'poor') return 'poor';
     var n = cloneSave(SAVE);
-    n.coins -= f.it.cost; n.owned[kind].push(id); n.equip[kind][f.era.id] = id;
+    n = spendCoinsOn(n, f.it.cost); n.owned[kind].push(id); n.equip[kind][f.era.id] = id;
     if (!writeSave(n)) return 'error';
     SAVE = n; sfx.coin();
     return 'ok';
@@ -2155,7 +2187,7 @@
     if (act === 'buy') {
       var r = buyItem(shopTab, id);
       if (r === 'ok') shopMsg('Got it! ' + f.it.name + ' is equipped.');
-      else if (r === 'poor') shopMsg('You need ' + fmt(f.it.cost - SAVE.coins) + ' more coins. Play matches to earn more!');
+      else if (r === 'poor') shopMsg('You need ' + fmt(f.it.cost - getCoins()) + ' more coins. Play matches to earn more!');
       else if (r === 'error') shopMsg("Couldn't save right now, so nothing was spent. Try again.");
     } else if (act === 'equip') { if (equipItem(shopTab, id) === 'ok') shopMsg(f.it.name + ' equipped.'); }
     else if (act === 'locked') shopMsg('Buy the upgrades in order.');
@@ -2210,6 +2242,7 @@
   // ---------- test hook ----------
   window.__toss = {
     G: G, BALANCE: BALANCE, ERAS: ERAS, CFG: CFG,
+    admin: function () { return !!ADMIN; }, getCoins: getCoins, aimSens: aimSens, applyAimDelta: applyAimDelta,
     save: function () { return cloneSave(SAVE); }, rawSave: function () { try { return localStorage.getItem(SAVE_KEY); } catch (e) { return null; } },
     saveKey: SAVE_KEY, saveWasCorrupt: function () { return saveWasCorrupt; },
     resetSave: function () { SAVE = defaultSave(); writeSave(SAVE); renderMenu(); },
