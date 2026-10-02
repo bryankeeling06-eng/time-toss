@@ -1239,12 +1239,12 @@
       c.fillStyle = P.skin; c.beginPath(); c.arc(0.42, -0.72, 0.07, 0, 7); c.fill();
       c.strokeStyle = P.wood; c.lineWidth = 0.07; c.beginPath(); c.arc(0.5, -1.15, 0.28, -0.9, 1.4); c.stroke();
     }
-    // great-helm
+    // solid great-helm — no visor / eye-slit / face band (Moon-style opaque dome)
     c.fillStyle = P.stone; c.beginPath(); c.ellipse(0, -1.52, 0.34, 0.36, 0, 0, 7); c.fill();
+    c.strokeStyle = P.spot || '#8890a0'; c.lineWidth = 0.04; c.beginPath(); c.ellipse(0, -1.52, 0.34, 0.36, 0, 0, 7); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,.28)'; c.beginPath(); c.ellipse(-0.1, -1.62, 0.12, 0.1, -0.35, 0, 7); c.fill();
     c.fillStyle = P.spot || '#8890a0'; c.beginPath(); c.ellipse(0, -1.78, 0.18, 0.1, 0, 0, 7); c.fill(); // plume base
     c.fillStyle = '#e8434a'; c.beginPath(); c.moveTo(-0.04, -1.86); c.quadraticCurveTo(0.2, -2.15, 0.08, -1.78); c.quadraticCurveTo(-0.02, -1.95, -0.04, -1.86); c.fill();
-    c.fillStyle = 'rgba(20,20,30,.65)'; c.fillRect(-0.22, -1.55, 0.44, 0.1);
-    c.fillStyle = 'rgba(20,20,30,.4)'; c.fillRect(-0.06, -1.55, 0.04, 0.22);
     if (hurt) { c.strokeStyle = '#fff'; c.lineWidth = 0.035; c.beginPath(); c.moveTo(-0.12, -1.48); c.lineTo(-0.04, -1.4); c.moveTo(-0.04, -1.48); c.lineTo(-0.12, -1.4); c.stroke(); }
   }
   function drawBandit(c, P, aiming, hurt) {
@@ -1546,10 +1546,13 @@
     c.beginPath(); c.moveTo(-50, sh); c.quadraticCurveTo(0, sh - 30, 50, sh); c.lineTo(48, hipY + 20);
     for (var f = 0; f <= 8; f++) c.lineTo(48 - f * 12, hipY + (f % 2 ? 8 : 22));
     c.closePath(); c.fill(); c.globalAlpha = 1;
-    // helm
+    // solid opaque helm (rear) — no translucent visor / eye-slit face band
     c.fillStyle = steel; c.beginPath(); c.ellipse(0, headY, 34, 36, 0, 0, 7); c.fill();
-    c.fillStyle = 'rgba(20,20,30,.55)'; c.fillRect(-22, headY - 4, 44, 10);
-    c.fillStyle = '#e8434a'; c.beginPath(); c.moveTo(-4, headY - 34); c.quadraticCurveTo(18, headY - 58, 6, headY - 28); c.fill();
+    c.strokeStyle = white ? '#fff' : steel2; c.lineWidth = 5; c.beginPath(); c.ellipse(0, headY, 34, 36, 0, 0, 7); c.stroke();
+    if (!white) {
+      c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-10, headY - 10, 12, 10, -0.35, 0, 7); c.fill();
+    }
+    c.fillStyle = white ? '#fff' : '#e8434a'; c.beginPath(); c.moveTo(-4, headY - 34); c.quadraticCurveTo(18, headY - 58, 6, headY - 28); c.fill();
     // bow + arrow pose (NOT a rifle); bow always held, arrow only when ready
     var bk = armed ? kick : kick + 28;
     c.strokeStyle = white ? '#fff' : '#8a5a3a'; c.lineWidth = 8; c.beginPath();
@@ -2494,7 +2497,7 @@
     modern: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#6a7080"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#4a5a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d4a07a"/><path d="M10 20c2-8 8-12 14-12s12 4 14 12l-3 1c-2-4-6-6-11-6s-9 2-11 7z" fill="#3a4a30"/><rect x="12" y="18" width="24" height="5" fill="#2a3a22"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     cactus: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><rect x="13" y="16" width="22" height="34" rx="11" fill="#4cb05f"/><path d="M8 17c0-2 7-4 16-4s16 2 16 4-7 3-16 3S8 19 8 17z" fill="#b8652d"/><path d="M15 15c0-6 4-9 9-9s9 3 9 9z" fill="#c9793a"/><circle cx="20" cy="26" r="3.2" fill="#fff"/><circle cx="28" cy="26" r="3.2" fill="#fff"/><circle cx="20.6" cy="26.4" r="1.6" fill="#1d1a24"/><circle cx="28.6" cy="26.4" r="1.6" fill="#1d1a24"/></svg>',
     soldier: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#6a7080"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#4a5a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d4a07a"/><path d="M10 20c2-8 8-12 14-12s12 4 14 12l-3 1c-2-4-6-6-11-6s-9 2-11 7z" fill="#3a4a30"/><rect x="12" y="18" width="24" height="5" fill="#2a3a22"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
-    knight: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7ec3f0"/><rect y="40" width="48" height="8" fill="#6ab04c"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#c0c8d4"/><ellipse cx="24" cy="24" rx="12" ry="13" fill="#c0c8d4"/><rect x="14" y="22" width="20" height="5" fill="#2a2a35"/><path d="M22 10q4-8 8 0" fill="#e8434a"/><circle cx="20" cy="28" r="1.4" fill="#1d1a24"/><circle cx="28" cy="28" r="1.4" fill="#1d1a24"/></svg>',
+    knight: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#7ec3f0"/><rect y="40" width="48" height="8" fill="#6ab04c"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#c0c8d4"/><ellipse cx="24" cy="24" rx="12" ry="13" fill="#c0c8d4" stroke="#8890a0" stroke-width="2"/><ellipse cx="18" cy="18" rx="4.5" ry="3.5" fill="rgba(255,255,255,.4)"/><path d="M22 10q4-8 8 0" fill="#e8434a"/></svg>',
     cowpoke: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#b86a3a"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#f0b088"/><path d="M8 18c0-2 7-3 16-3s16 1 16 3-7 2-16 2S8 20 8 18z" fill="#2a1810"/><path d="M16 17c0-6 3-9 8-9s8 3 8 9z" fill="#3a2418"/><rect x="16" y="20" width="16" height="3" fill="#c9a24a"/><circle cx="20" cy="27" r="1.6" fill="#1d1a24"/><circle cx="28" cy="27" r="1.6" fill="#1d1a24"/></svg>',
     space: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#1a1740"/><circle cx="10" cy="10" r="1" fill="#fff"/><circle cx="40" cy="14" r="1" fill="#fff"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#6a5ad0"/><ellipse cx="24" cy="24" rx="13" ry="14" fill="#c8d8ec" stroke="#a8b8cc" stroke-width="3"/><ellipse cx="18" cy="18" rx="5" ry="4" fill="rgba(255,255,255,.45)"/><rect x="18" y="34" width="12" height="4" rx="2" fill="#39e0ff"/></svg>',
     bandit: '<svg viewBox="0 0 48 48"><rect width="48" height="48" fill="#ffc46b"/><path d="M14 48c0-7 4-11 10-11s10 4 10 11z" fill="#5a3a28"/><ellipse cx="24" cy="26" rx="11" ry="12" fill="#d8a070"/><path d="M8 18c0-2 7-3 16-3s16 1 16 3-7 2-16 2S8 20 8 18z" fill="#2a1810"/><path d="M16 17c0-6 3-9 8-9s8 3 8 9z" fill="#3a2418"/><path d="M14 32h20l-3 5H17z" fill="#c9a24a"/><circle cx="20" cy="26" r="1.6" fill="#1d1a24"/><circle cx="28" cy="26" r="1.6" fill="#1d1a24"/></svg>',
