@@ -190,10 +190,4 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:none}
 .sbtn.lockd{background:rgba(0,0,0,.3);color:#c8b6e6;font-size:11px;max-width:96px}
 @media (max-height:760px){ .rules{font-size:13px;line-height:1.45} .howto{font-size:14px;margin-top:10px} .logo{font-size:44px} .tro{margin-top:8px;padding:8px 10px} .big{padding:12px;margin-top:12px} .endTitle{font-size:38px} }
 
-/* left/right movement between rocks */
-#moveBar{position:absolute;left:calc(var(--sl) + 12px);bottom:calc(var(--sb) + 14px);display:none;gap:12px;z-index:3}
-.can-move #moveBar{display:flex}
-.mbtn{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:rgba(24,16,40,.6);color:#fff;font-size:24px;line-height:1;padding:0;
-  box-shadow:0 4px 0 rgba(0,0,0,.35);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-.mbtn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35)}
-.mbtn.off{opacity:.35}
+/* finger-slide movement: no LEFT/RIGHT buttons */

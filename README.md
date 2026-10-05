@@ -24,10 +24,10 @@ All five are playable. Unlock with trophies: **500 / 1,250 / 2,250 / 3,500**.
    - **Pull-down slingshot aim (all eras):** press in the throw area, **pull DOWN** (and sideways) — the aim guide / reticle moves the **opposite** way (pull down → aim up toward the enemy). Finger stays low so it doesn’t cover the target. **Release to fire.**
    - Arc eras (Stone / Castle / Wild West): dotted guide + ring; the ring still needs to sit on (or a bit above) the enemy for arcs.
    - Desert Ops / Moon: same pull-down aim; hold to zoom, release to fire.
-4. **Their turn:** slide **◀ ▶** between your 3 covers or hold **DUCK** when they wind up / glint.
+4. **Their turn:** **slide your finger** between your 3 covers or hold **DUCK** when they wind up / glint.
 5. **KO** or most damage after **5 rounds** (tie → sudden death).
 
-Controls: touch aim, ◀ ▶ move, DUCK; desktop also supports mouse, arrows/A/D, Space. Sound resumes after an iPhone call or app switch (the 🔊/🔇 mute toggle is remembered).
+Controls: pull-down aim, finger-slide between covers (hide + bot turn), DUCK; desktop also supports mouse, arrows/A/D, Space. Sound resumes after an iPhone call or app switch (the 🔊/🔇 mute toggle is remembered).
 
 ### Aim sensitivity (`shot.sens`)
 

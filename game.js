@@ -89,7 +89,7 @@
       botTime: 8.5, dist: [8, 10], agility: 0.4,
       bot: { name: 'Ugga Bunga', look: 'caveman', tell: 'windup', flight: 0.75 },
       player: { outfit: 'cave' }, ammo: 'spear',
-      hints: { aim: 'Pull DOWN to aim · let go to throw', bot: 'He aims at your rock: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · let go to throw', bot: 'He aims at your rock: slide to cover or DUCK!' } },
     { id: 'castle', name: 'Castle', weapon: 'Bow & arrows', built: true, scene: 'castle',
       cover: { kind: 'haystack', tall: 1.0, low: 1.0, halfW: 1.0, spots: [-2.6, 0, 2.6] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 5.5,
@@ -97,7 +97,7 @@
       botTime: 8, dist: [10, 13], agility: 0.55,
       bot: { name: 'Sir Wobblebottom', look: 'knight', tell: 'windup', flight: 0.55 },
       player: { outfit: 'knight' }, ammo: 'arrow',
-      hints: { aim: 'Pull DOWN to aim · let go to shoot', bot: 'He aims at your hay: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · let go to shoot', bot: 'He aims at your hay: slide to cover or DUCK!' } },
     { id: 'wildwest', name: 'Wild West', weapon: 'Musket', built: true, scene: 'saloon',
       cover: { kind: 'barrel', tall: 1.0, low: 1.0, halfW: 0.7, spots: [-2.5, 0, 2.5] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6,
@@ -105,7 +105,7 @@
       botTime: 7.5, dist: [11, 14], agility: 0.65,
       bot: { name: 'Dusty Pete', look: 'bandit', tell: 'glint', flight: 0.28 },
       player: { outfit: 'cowpoke' }, ammo: 'ball',
-      hints: { aim: 'Pull DOWN to aim · slow reload', bot: 'Glint means fire: slide ◀ ▶ or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · slow reload', bot: 'Glint means fire: slide to cover or DUCK!' } },
     { id: 'modern', name: 'Desert Ops', weapon: 'Scoped rifle', built: true, scene: 'desert',
       cover: { kind: 'pillar', tall: 0.90, low: 0.90, halfW: 0.55, spots: [-2.5, 0, 2.5] },
       playerCover: { kind: 'sandbag' },
@@ -114,7 +114,7 @@
       botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
       bot: { name: 'Sgt. Steele', look: 'soldier', tell: 'glint', flight: 0 },
       player: { outfit: 'modern' }, ammo: 'bullet',
-      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide ◀ ▶ behind sandbags or DUCK!' } },
+      hints: { aim: 'Pull DOWN to aim · hold to zoom · let go to fire', bot: 'Glint means fire: slide behind sandbags or DUCK!' } },
     { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: true, scene: 'moon',
       cover: { kind: 'shield', tall: 1.25, low: 1.25, halfW: 1.0, spots: [-2.4, 0, 2.4], blockChance: 0.20 },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 7,
@@ -122,7 +122,7 @@
       botTime: 7, dist: [10, 12.5], agility: 0.9,
       bot: { name: 'Zorp', look: 'alien', tell: 'glint', flight: 0 },
       player: { outfit: 'space' }, ammo: 'cell',
-      hints: { aim: 'Pull DOWN to aim · shield can block', bot: 'Blaster glow: slide ◀ ▶ or DUCK!' } }
+      hints: { aim: 'Pull DOWN to aim · shield can block', bot: 'Blaster glow: slide to cover or DUCK!' } }
   ];
   var ERA_BY_ID = {}; ERAS.forEach(function (e, i) { e.idx = i; ERA_BY_ID[e.id] = e; });
 
@@ -276,7 +276,7 @@
     enemy: { baseWx: 0.5, z: 9, wx: 0.5, tx: 0.5, duck: 0, duckTarget: 0, duckT: 0, actT: 0, flash: 0, hitT: 0, hatOff: 0, pose: 0, dizzy: 0 },
     coverH: 0.8, coverFrom: 0.8, coverTo: 0.8, coverT: 1,
     player: { duck: 0, stam: 1, tired: false, flash: 0, recoil: 0, hitT: 0, slot: 1, xf: 0.5, from: 0.5, to: 0.5, mt: 9, settled: 9 },
-    pcH: 0, duckHeld: false, keyDuck: false, btnDuck: false, ptrDuck: false,
+    pcH: 0, duckHeld: false, keyDuck: false, btnDuck: false, ptrDuck: false, dragMove: false,
     botShots: [], tell: 0, botForce: null, proj: [], stuck: [], botSpears: [], nearStuck: [],
     fx: [], shake: 0, freeze: false,
     lastShot: null, shotLog: [], botLog: [], roundGain: { p: 0, b: 0 },
@@ -1487,17 +1487,30 @@
     return { x: x, base: base, w: 196 * PS, tall: 150 * PS, low: 150 * PS };
   }
   function playerRockIdx() { return nearestIdx(pSlots(), G.player.xf); }  // mid-slide you count as being at the closer rock
-  function canMove() { return multiSlot() && !G.ko && ['enemyHide', 'aim', 'swap', 'playerHide', 'botFire', 'roundEnd'].indexOf(G.phase) >= 0; }
+  // Finger-slide only during your hide countdown and the bot's shooting turn (not during aim).
+  function canMove() { return multiSlot() && !G.ko && (G.phase === 'playerHide' || G.phase === 'botFire' || G.phase === 'swap'); }
+  function playerExposed() { return !!G.dragMove || G.player.mt < BALANCE.move.slide; }
   function movePlayer(dir) {
     var p = G.player, sl = pSlots(), n = clamp(p.slot + dir, 0, sl.length - 1);
-    if (!canMove() || n === p.slot) return p.slot;
+    if (!canMove() || n === p.slot || G.dragMove) return p.slot;
     p.from = p.xf; p.to = sl[n]; p.mt = 0; p.slot = n; p.settled = 0;
     sfx.step();
     return n;
   }
-  function placePlayer(i) { var p = G.player, sl = pSlots(); i = clamp(i, 0, sl.length - 1); p.slot = i; p.xf = p.from = p.to = sl[i]; p.mt = 9; p.settled = 9; PX = W * p.xf; }
+  function placePlayer(i) { var p = G.player, sl = pSlots(); i = clamp(i, 0, sl.length - 1); p.slot = i; p.xf = p.from = p.to = sl[i]; p.mt = 9; p.settled = 9; G.dragMove = false; PX = W * p.xf; }
+  function dragMoveTo(sx) {
+    var sl = pSlots(), lo = sl[0], hi = sl[sl.length - 1], xf = clamp(sx / W, lo, hi), p = G.player;
+    p.xf = xf; p.from = xf; p.to = xf; p.mt = 0; p.settled = 0; p.slot = nearestIdx(sl, xf); PX = W * p.xf;
+  }
+  function snapToNearestCover() {
+    var sl = pSlots(), p = G.player, n = nearestIdx(sl, p.xf);
+    if (Math.abs(p.xf - sl[n]) < 0.002) { placePlayer(n); return n; }
+    p.from = p.xf; p.to = sl[n]; p.mt = 0; p.slot = n; p.settled = 0; sfx.step(); return n;
+  }
+  function clearDragMove() { if (G.dragMove) { G.dragMove = false; snapToNearestCover(); } }
   function stepPlayerSlide(dt) {
     var p = G.player, T = BALANCE.move.slide;
+    if (G.dragMove) { PX = W * p.xf; return; }
     if (p.mt < T) { p.mt += dt; var u = clamp(p.mt / T, 0, 1); u = u * u * (3 - 2 * u); p.xf = p.from + (p.to - p.from) * u; }
     else { p.xf = p.to; p.settled += dt; }
     PX = W * p.xf;
@@ -1887,7 +1900,6 @@
     var mode = G.phase === 'aim' ? 'mode-aim' : G.phase === 'botFire' ? 'mode-bot' : '';
     setClass(app, 'mode-aim', mode === 'mode-aim'); setClass(app, 'mode-bot', mode === 'mode-bot');
     setClass(app, 'can-move', canMove());
-    if (multiSlot()) { setClass($('leftBtn'), 'off', G.player.slot <= 0); setClass($('rightBtn'), 'off', G.player.slot >= pSlots().length - 1); }
     setClass($('sideP'), 'active', G.phase === 'aim' || G.phase === 'enemyHide');
     setClass($('sideB'), 'active', G.phase === 'botFire' || G.phase === 'playerHide');
     if (mode === 'mode-bot') { // the throw turn has no timer; only the bot's turn shows one
@@ -1967,7 +1979,7 @@
   function setPhase(p) { G.phase = p; G.pt = 0; G.endT = 0; G.ending = false; }
   function dropCover(to) { G.coverFrom = G.coverH; G.coverTo = to; G.coverT = 0; }
   function startAim() {
-    setPhase('aim'); showCount(0); G.countNum = 0;
+    setPhase('aim'); showCount(0); G.countNum = 0; clearDragMove();
     if (G.era.cover.low !== G.coverH) dropCover(G.era.cover.low);
     G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null;
     var cg = coverGeom(); G.aim.x = cg.x; G.aim.y = cg.top - 60;
@@ -1975,11 +1987,11 @@
     banner(G.era.id === 'stone' ? 'THROW! Pull down to aim!' : (G.era.shot.kind === 'arc' ? 'THROW! Pull down!' : 'SHOOT! Pull down!'), 'go', hold); sfx.go();
   }
   function endAim() { releaseAim(); setPhase('swap'); banner('SWAP! YOUR TURN TO HIDE', 'good'); hint(''); }
-  function startPlayerHide() { setPhase('playerHide'); G.countNum = 0; banner("YOU'RE HIDING"); hint(''); releaseAim(); sfx.whoosh(); G.player.stam = 1; G.player.tired = false; }
+  function startPlayerHide() { setPhase('playerHide'); G.countNum = 0; banner("YOU'RE HIDING"); hint(multiSlot() ? 'Slide your finger to hide' : ''); releaseAim(); clearDragMove(); sfx.whoosh(); G.player.stam = 1; G.player.tired = false; }
   function startBotFire() {
-    setPhase('botFire'); showCount(0); G.countNum = 0;
+    setPhase('botFire'); showCount(0); G.countNum = 0; clearDragMove();
     G.shotsB = CFG.shots; G.timeLeft = G.era.botTime; G.player.stam = 1; G.player.tired = false;
-    banner('DODGE!', 'go', 0.8); sfx.go();
+    banner('DODGE!', 'go', 0.8); hint(multiSlot() ? 'Slide to a cover · or hold DUCK' : ''); sfx.go();
     var arc = G.era.shot.kind === 'arc', fl = G.era.bot.flight || 0, t = rr(1.0, 1.5); G.botShots = [];
     for (var i = 0; i < CFG.shots; i++) {
       var lead = rr(0.6, 1.0);
@@ -2180,8 +2192,9 @@
   function resolveBot(s, sp) {
     if (s.done) return; s.done = true;
     var p = G.player, res = s.intent, pc = playerCoverGeom(), tx, ty;
-    if ((res === 'hit' || res === 'head') && multiSlot() && s.target != null && playerRockIdx() !== s.target) res = 'moved';
-    else if ((res === 'hit' || res === 'head') && p.duck >= 0.6) res = 'dodge';
+    // Mid-run (finger-drag or slide anim) = exposed: a shot can still land even if you left the targeted cover.
+    if ((res === 'hit' || res === 'head') && multiSlot() && s.target != null && playerRockIdx() !== s.target && !playerExposed()) res = 'moved';
+    else if ((res === 'hit' || res === 'head') && p.duck >= 0.6 && !playerExposed()) res = 'dodge';
     if (G.ko) res = 'miss';
     if (res === 'hit' || res === 'head') {
       var dmg = Math.round(G.bot.dmg * (res === 'head' ? BALANCE.headMult : 1));
@@ -2217,7 +2230,7 @@
     G.botLog.push(res);
     return res;
   }
-  function releaseAim() { G.pointerId = null; G.scopeTarget = 0; G.last = null; G.aiming = false; }
+  function releaseAim() { G.pointerId = null; G.scopeTarget = 0; G.last = null; G.aiming = false; if (G.dragMove) { G.dragMove = false; snapToNearestCover(); } }
   // ---------- update ----------
   function update(dt) {
     G.time += dt; G.pt += dt;
@@ -2293,6 +2306,7 @@
       case 'playerHide': {
         var n = Math.max(1, CFG.hide - Math.floor(G.pt));
         if (n !== G.countNum) { G.countNum = n; showCount(n); sfx.beep(n === 1); }
+        if (G.phase === 'playerHide' && !bannerT && multiSlot()) hint('Slide your finger to hide');
         if (G.pt >= CFG.hide) { if (G.phase === 'enemyHide') startAim(); else startBotFire(); }
         break;
       }
@@ -2407,7 +2421,7 @@
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     CX = W / 2; Y0 = H * 0.52; FOC = Math.min(W * 1.12, H * 0.56);
-    // With 3 rocks the player is drawn smaller and higher, leaving the bottom strip for the ◀ ▶ / DUCK controls.
+    // With 3 rocks the player is drawn smaller and higher, leaving the bottom strip for DUCK.
     PS = Math.min(W / 390, H / 844) * (multiSlot() ? 0.56 : 0.76); PX = W * G.player.xf; PY = multiSlot() ? H - Math.max(60, H * 0.085) : H - Math.max(12, H * 0.015);
     coverCache.clear();
     buildBg();
@@ -2434,6 +2448,8 @@
     var yHi = G.era.shot.kind === 'hitscan' ? H * 0.9 : H * 0.92;
     G.aim.y = clamp(G.aim.y - dy * k, yLo, yHi);
   }
+  // Aim (pull-down) only in aim phase. Finger-slide move only in playerHide / botFire / swap.
+  // HUD / DUCK are separate DOM nodes (duck has pointer-events); canvas drags never start on them.
   cv.addEventListener('pointerdown', function (ev) {
     audio(); ev.preventDefault();
     if (G.phase === 'aim') {
@@ -2442,20 +2458,27 @@
       // Do not snap aim under the finger — keep startAim reticle; drag pulls it opposite.
       G.last = pos(ev); G.pressT = G.time;
       if (G.era.shot.kind === 'arc') G.aiming = true; else G.scopeTarget = 1;
-    } else if (G.phase === 'botFire' || G.phase === 'playerHide') {
-      G.ptrDuck = true; G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+    } else if (canMove()) {
+      G.dragMove = true; G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+      dragMoveTo(pos(ev).x);
     }
   });
   cv.addEventListener('pointermove', function (ev) {
     var p = pos(ev);
     if (ev.pointerType === 'mouse') G.hover = clampAim(p);
-    if (G.phase !== 'aim' || ev.pointerId !== G.pointerId || !G.last) return;
+    if (ev.pointerId !== G.pointerId) return;
+    if (G.dragMove) { dragMoveTo(p.x); return; }
+    if (G.phase !== 'aim' || !G.last) return;
     applyAimDelta(p.x - G.last.x, p.y - G.last.y);
     G.last = p;
   });
   function endPress(ev, fire) {
     if (ev.pointerId !== G.pointerId) return;
-    if (G.ptrDuck) { G.ptrDuck = false; G.pointerId = null; return; }
+    if (G.dragMove) {
+      G.dragMove = false; G.pointerId = null;
+      snapToNearestCover();
+      return;
+    }
     if (G.phase === 'aim' && fire && G.last) {
       if (G.era.shot.kind === 'arc') { var ax = G.aim.x, ay = G.aim.y; releaseAim(); playerThrow(ax, ay); return; }
       var held = G.time - G.pressT, steady = held >= 0.22 && G.scope > 0.7;
@@ -2468,9 +2491,6 @@
   cv.addEventListener('pointerup', function (ev) { endPress(ev, true); });
   cv.addEventListener('pointercancel', function (ev) { endPress(ev, false); });
   cv.addEventListener('pointerleave', function (ev) { if (ev.pointerType === 'mouse') G.hover = null; });
-  [['leftBtn', -1], ['rightBtn', 1]].forEach(function (m) {
-    $(m[0]).addEventListener('pointerdown', function (ev) { audio(); ev.preventDefault(); ev.stopPropagation(); movePlayer(m[1]); });
-  });
   var db = $('duckBtn');
   db.addEventListener('pointerdown', function (ev) { audio(); ev.preventDefault(); G.btnDuck = true; try { db.setPointerCapture(ev.pointerId); } catch (e) {} });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (n) { db.addEventListener(n, function () { G.btnDuck = false; }); });
@@ -2699,6 +2719,7 @@
       if (ph === 'enemyHide') beginRound();
       else if (ph === 'aim') { beginRound(); startAim(); G.coverT = 1; G.coverH = G.era.cover.low; G.enemy.duck = 0; G.enemy.duckTarget = 0; }
       else if (ph === 'playerHide') startPlayerHide();
+      else if (ph === 'swap') { setPhase('swap'); banner('SWAP! YOUR TURN TO HIDE', 'good'); hint(''); }
       else if (ph === 'botFire') startBotFire();
       else if (ph === 'roundEnd') endRound();
     },
@@ -2718,7 +2739,10 @@
     setRound: function (n) { G.round = n; },
     damage: function (head) { return playerDamage(!!head); }, maxHp: playerMaxHp, botStats: function () { return botStats(G.era, SAVE.trophies); },
     move: function (d) { return movePlayer(d); }, place: function (i) { placePlayer(i); }, canMove: function () { return canMove(); },
-    player: function () { var p = G.player; return { slot: p.slot, rock: playerRockIdx(), xf: p.xf, x: PX, sliding: p.mt < BALANCE.move.slide, duck: p.duck }; },
+    dragTo: function (sx) { if (!canMove()) return null; G.dragMove = true; dragMoveTo(sx); return G.player.xf; },
+    snapCover: function () { G.dragMove = false; return snapToNearestCover(); },
+    exposed: function () { return playerExposed(); },
+    player: function () { var p = G.player; return { slot: p.slot, rock: playerRockIdx(), xf: p.xf, x: PX, sliding: p.mt < BALANCE.move.slide || !!G.dragMove, duck: p.duck, drag: !!G.dragMove }; },
     enemySlot: function () { return G.enemy.slot; },
     enemyRock: function (i) { var e = G.enemy, sp = G.era.cover.spots; e.slot = i; e.baseWx = e.wx = e.tx = sp[i]; e.plan = null; },
     guideRing: function (x, y) { var r = guideRing(x, y); return { x: r.x, y: r.y }; },
