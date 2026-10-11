@@ -45,9 +45,20 @@
       retarget: 0.60, retargetSettle: 0.35
     },
     move: { slide: 0.25, recenter: 0.3, edgeMargin: 6 },  // slide = s between your rocks; recenter = s to glide to center before your throws; edgeMargin = px kept clear at screen edges
-    // Aim easing (v18): the aim glides toward where your finger has pulled it instead of jumping 1:1.
-    // ease = catch-up rate (1/s); cap = max aim speed in px/s at 844 px tall (scaled with screen height; rifles also divide by scope zoom).
-    aimEase: { stone: { ease: 6, cap: 520 }, castle: { ease: 4.5, cap: 380 }, wildwest: { ease: 5.5, cap: 460 }, modern: { ease: 6, cap: 560 }, space: { ease: 6.5, cap: 600 } },
+    // Aim feel (v19). travel = finger travel, as a fraction of screen width, that sweeps the aim across the whole target
+    // area (outer edge of the far-left cover -> outer edge of the far-right cover); vertically the same travel spans
+    // ground -> well over his head. Gain is recomputed from the live layout, so it scales with screen width and distance.
+    // The shown aim eases toward the finger target: ease = catch-up rate (1/s), cap / floor = max / min aim speed in
+    // px/s at 390 px wide (scaled with width). Release fires at the finger target, so a quick flick never falls short.
+    // Scoped rifles lose only scopeDamp x (zoom-1) of gain and speed, so both edges stay reachable while zoomed.
+    aimFeel: {
+      stone: { travel: 0.29, ease: 28, cap: 2600, floor: 500 },
+      castle: { travel: 0.32, ease: 24, cap: 2300, floor: 460 },  // softest: longest travel, slowest catch-up
+      wildwest: { travel: 0.30, ease: 26, cap: 2450, floor: 480 },
+      modern: { travel: 0.27, ease: 28, cap: 2600, floor: 500 },
+      space: { travel: 0.28, ease: 30, cap: 2700, floor: 500 },
+      scopeDamp: 0.12, vSpan: 2.6
+    },
     // Weapon upgrade levels per era (buy in order; equip any owned). dmg = body damage.
     // steady: extra aim-guide length (share of the arc). reload: throw cooldown multiplier.
     weapons: {
@@ -97,13 +108,13 @@
   // ERAS: per-era scene, weapon physics, cover, bot. Only built:true is playable.
   // =====================================================================
   // Aim: pull-down slingshot. Finger drag moves aim the OPPOSITE way (pull down → aim up
-  // toward the enemy). sens = aim-move / finger-move (lower = less twitchy). Castle is softest for kids.
+  // toward the enemy). Gain / speed live in BALANCE.aimFeel (Castle is softest for kids).
   // Quiet QA unlock (session only, not a public feature): ?admin=1 or ?unlock=all
   var ERAS = [
     { id: 'stone', name: 'Stone Age', weapon: 'Spear', built: true, scene: 'canyon',
       cover: { kind: 'rock', tall: 0.8, low: 0.8, halfW: 1.0, spots: [-2.4, 0, 2.4] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 5, bannerHold: 2.2,
-      shot: { kind: 'arc', speed: 7.6, g: 5, guide: 0.55, len: 0.9, cool: 0.6, ring: true, sens: 0.70 },
+      shot: { kind: 'arc', speed: 7.6, g: 5, guide: 0.55, len: 0.9, cool: 0.6, ring: true },
       botTime: 8.5, dist: [8, 10], agility: 0.4,
       bot: { name: 'Ugga Bunga', look: 'caveman', tell: 'windup', flight: 0.75 },
       player: { outfit: 'cave' }, ammo: 'spear',
@@ -111,7 +122,7 @@
     { id: 'castle', name: 'Castle', weapon: 'Bow & arrows', built: true, scene: 'castle',
       cover: { kind: 'haystack', tall: 1.0, low: 1.0, halfW: 1.0, spots: [-2.6, 0, 2.6] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 5.5,
-      shot: { kind: 'arc', speed: 16, g: 7, guide: 0.4, len: 0.75, cool: 0.5, ring: true, sens: 0.48 },
+      shot: { kind: 'arc', speed: 16, g: 7, guide: 0.4, len: 0.75, cool: 0.5, ring: true },
       botTime: 8, dist: [10, 13], agility: 0.55,
       bot: { name: 'Sir Wobblebottom', look: 'knight', tell: 'windup', flight: 0.55 },
       player: { outfit: 'knight' }, ammo: 'arrow',
@@ -119,7 +130,7 @@
     { id: 'wildwest', name: 'Wild West', weapon: 'Musket', built: true, scene: 'saloon',
       cover: { kind: 'barrel', tall: 1.0, low: 1.0, halfW: 0.7, spots: [-2.5, 0, 2.5] },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6,
-      shot: { kind: 'arc', speed: 40, g: 3, guide: 0.22, len: 0.25, cool: 1.2, ring: true, sens: 0.62 },
+      shot: { kind: 'arc', speed: 40, g: 3, guide: 0.22, len: 0.25, cool: 1.2, ring: true },
       botTime: 7.5, dist: [11, 14], agility: 0.65,
       bot: { name: 'Dusty Pete', look: 'bandit', tell: 'glint', flight: 0.28 },
       player: { outfit: 'cowpoke' }, ammo: 'ball',
@@ -128,7 +139,7 @@
       cover: { kind: 'pillar', tall: 0.90, low: 0.90, halfW: 0.55, spots: [-2.5, 0, 2.5] },
       playerCover: { kind: 'sandbag' },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 6.5,
-      shot: { kind: 'hitscan', zoom: 2.3, sens: 0.85, cool: 0.45 },
+      shot: { kind: 'hitscan', zoom: 2.3, cool: 0.45 },
       botTime: 7.5, dist: [8.6, 10.6], agility: 0.8,
       bot: { name: 'Sgt. Steele', look: 'soldier', tell: 'glint', flight: 0 },
       player: { outfit: 'modern' }, ammo: 'bullet',
@@ -136,7 +147,7 @@
     { id: 'space', name: 'Moon Base', weapon: 'Laser blaster', built: true, scene: 'moon',
       cover: { kind: 'shield', tall: 1.25, low: 1.25, halfW: 1.0, spots: [-2.4, 0, 2.4], blockChance: 0.20 },
       playerSpots: [0.17, 0.5, 0.83], hideRun: 7,
-      shot: { kind: 'hitscan', zoom: 1.6, sens: 0.78, cool: 0.35 },
+      shot: { kind: 'hitscan', zoom: 1.6, cool: 0.35 },
       botTime: 7, dist: [10, 12.5], agility: 0.9,
       bot: { name: 'Zorp', look: 'alien', tell: 'glint', flight: 0 },
       player: { outfit: 'space' }, ammo: 'cell',
@@ -2104,6 +2115,15 @@
     var sw = swayOffset();
     return { a: a, R: R, z: z, cx: CX, cy: H * 0.4, ax: G.aim.x + sw.x * a, ay: G.aim.y + sw.y * a };
   }
+  // Faint "where your aim is heading" ring at the finger target (aim phase only, while pulling).
+  function drawAimMarker(c, x, y, a) {
+    if (!(a > 0.05)) return;
+    var r = 15 + 2 * Math.sin(G.time * 6);
+    c.save(); c.globalAlpha = 0.55 * a; c.lineWidth = 3; c.strokeStyle = '#fff'; c.setLineDash([6, 5]);
+    c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke(); c.setLineDash([]);
+    c.globalAlpha = 0.7 * a; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 3.2, 0, 7); c.fill();
+    c.restore(); G.markerOn = true; G.markerAt = { x: x, y: y };
+  }
   function swayOffset() { var t = G.time; return { x: Math.sin(t * 1.1) * 1.6 + Math.sin(t * 2.7) * 0.6, y: Math.cos(t * 1.4) * 1.3 }; }
   function toScreen(x, y) {
     if (G.scope < 0.05) return { x: x, y: y };
@@ -2137,6 +2157,7 @@
     c.fillStyle = 'rgba(20,10,30,.9)';
     for (var i = 1; i <= 3; i++) { c.beginPath(); c.arc(s.cx + i * s.R * 0.14, s.cy, 2.2, 0, 7); c.arc(s.cx - i * s.R * 0.14, s.cy, 2.2, 0, 7); c.fill(); c.beginPath(); c.arc(s.cx, s.cy + i * s.R * 0.14, 2.2, 0, 7); c.fill(); }
     c.fillStyle = '#ff3b4f'; c.beginPath(); c.arc(s.cx, s.cy, 2.6, 0, 7); c.fill();
+    if (G.phase === 'aim' && G.aimGoal && G.last && canShoot()) drawAimMarker(c, s.cx + (G.aimGoal.x - s.ax) * s.z, s.cy + (G.aimGoal.y - s.ay) * s.z, s.a);
     c.restore();
     c.save(); c.strokeStyle = '#1a1026'; c.lineWidth = 10 * s.a; c.beginPath(); c.arc(s.cx, s.cy, s.R + 4, 0, 7); c.stroke();
     c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2; c.beginPath(); c.arc(s.cx, s.cy, s.R - 1, 0, 7); c.stroke(); c.restore();
@@ -2820,9 +2841,13 @@
     }
     drawNearSpears(ctx);
     drawFx(ctx, 'near');
+    G.markerOn = false;
     if (G.era.shot.kind === 'hitscan') drawScope(ctx);
     if (G.phase === 'aim' && G.era.shot.kind === 'arc' && canShoot()) {
-      if (G.aiming) drawGuide(ctx, G.aim.x, G.aim.y);
+      if (G.aiming) {
+        drawGuide(ctx, G.aim.x, G.aim.y);
+        if (G.aimGoal) { var mk = guideRing(G.aimGoal.x, G.aimGoal.y); drawAimMarker(ctx, mk.x, mk.y, 1); }  // where the finger's throw would land
+      }
       else if (G.hover) drawGuide(ctx, G.hover.x, G.hover.y);
     }
     if (G.phase === 'aim' && G.era.shot.kind === 'hitscan' && G.scope < 0.3 && G.hover && canShoot()) drawCrosshair(ctx, G.hover.x, G.hover.y);
@@ -2861,37 +2886,46 @@
 
   // ---------- input (pull-down slingshot aim) ----------
   // Mapping: aim moves opposite the finger. Pull DOWN → reticle/guide goes UP toward the enemy.
-  // Finger stays low; release fires. sens on each era.shot scales aimΔ / fingerΔ.
+  // Finger stays low; release fires. Gain per axis comes from BALANCE.aimFeel (see aimGain).
   function pos(ev) { var r = cv.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
   function clampAim(p) { return { x: clamp(p.x, 0, W), y: clamp(p.y, H * 0.08, H * 0.92) }; }
-  function aimSens() {
-    var s = G.era.shot.sens || 0.7;
-    if (G.era.shot.kind === 'hitscan') {
-      var z = 1 + (G.era.shot.zoom - 1) * easeOut(G.scope);
-      return s / z;
+  function aimFeel() { return BALANCE.aimFeel[G.era.id] || BALANCE.aimFeel.stone; }
+  function scopeDamp() { return G.era.shot.kind === 'hitscan' ? 1 + BALANCE.aimFeel.scopeDamp * (G.era.shot.zoom - 1) * easeOut(G.scope) : 1; }
+  // Screen span the aim has to cover: outer edges of the outer enemy covers (x), ground -> vSpan world units up (y).
+  function aimSpan() {
+    var n = (G.era.cover.spots || [0]).length, a = coverGeomAt(0), b = coverGeomAt(n - 1);
+    var e = G.enemy, vs = BALANCE.aimFeel.vSpan, y = vs * FOC / Math.max(1, e.z);
+    if (G.era.shot.kind === 'arc') {  // lobbed shots: measure the aim that actually lands at ground vs vSpan up
+      var lo = solveAim({ x: e.wx, y: 0, z: e.z }), hi = solveAim({ x: e.wx, y: vs, z: e.z });
+      if (lo && hi) y = Math.max(y, lo.y - hi.y);
     }
-    return s;
+    return { x: Math.max(40, b.x1 - a.x0), y: y };
   }
+  // aim px per finger px, per axis
+  function aimGain() {
+    var f = aimFeel(), sp = aimSpan(), d = scopeDamp(), tr = f.travel * W;
+    return { x: sp.x / tr / d, y: sp.y / tr / d };
+  }
+  function aimSens() { return aimGain().x; }  // legacy hook name
   function aimEaseCfg() {
-    var a = BALANCE.aimEase[G.era.id] || { ease: 6, cap: 500 }, cap = a.cap * H / 844;
-    if (G.era.shot.kind === 'hitscan') cap /= 1 + (G.era.shot.zoom - 1) * easeOut(G.scope);
-    return { ease: a.ease, cap: cap };
+    var f = aimFeel(), k = W / 390, d = scopeDamp();
+    return { ease: f.ease, cap: f.cap * k / d, floor: f.floor * k / d, travel: f.travel };
   }
   // The finger moves an invisible goal (slingshot invert on both axes: pull down → aim up);
   // the aim the guide / scope shows, and the one release fires at, eases toward it at a capped speed.
   function applyAimDelta(dx, dy) {
-    var k = aimSens();
+    var k = aimGain();
     if (!G.aimGoal) G.aimGoal = { x: G.aim.x, y: G.aim.y };
     var yLo = G.era.shot.kind === 'hitscan' ? H * 0.2 : H * 0.08;
     var yHi = G.era.shot.kind === 'hitscan' ? H * 0.9 : H * 0.92;
-    G.aimGoal.x = clamp(G.aimGoal.x - dx * k, 0, W);
-    G.aimGoal.y = clamp(G.aimGoal.y - dy * k, yLo, yHi);
+    G.aimGoal.x = clamp(G.aimGoal.x - dx * k.x, 0, W);
+    G.aimGoal.y = clamp(G.aimGoal.y - dy * k.y, yLo, yHi);
   }
   function stepAim(dt) {
     var g = G.aimGoal; if (!g || dt <= 0) return;
     var a = aimEaseCfg(), dx = g.x - G.aim.x, dy = g.y - G.aim.y, L = Math.hypot(dx, dy);
     if (L < 0.05) { G.aim.x = g.x; G.aim.y = g.y; return; }
-    var mv = Math.min(L * (1 - Math.exp(-a.ease * dt)), a.cap * dt);
+    var mv = Math.min(L, clamp(L * (1 - Math.exp(-a.ease * dt)), a.floor * dt, a.cap * dt));  // fast exp ease, capped, with a floor so it lands crisply
     G.aim.x += dx / L * mv; G.aim.y += dy / L * mv;
     G.aimSpeed = mv / dt;
   }
@@ -2928,8 +2962,10 @@
       return;
     }
     if (G.phase === 'aim' && fire && G.last) {
+      // Release fires at the finger target (the marker), not wherever the eased guide had got to: a flick never falls short.
       G.relLog = { aim: { x: G.aim.x, y: G.aim.y }, goal: G.aimGoal ? { x: G.aimGoal.x, y: G.aimGoal.y } : null };
-      if (G.era.shot.kind === 'arc') { var ax = G.aim.x, ay = G.aim.y; releaseAim(); playerThrow(ax, ay); return; }  // fires at the eased aim
+      if (G.aimGoal) { G.aim.x = G.aimGoal.x; G.aim.y = G.aimGoal.y; }
+      if (G.era.shot.kind === 'arc') { var ax = G.aim.x, ay = G.aim.y; releaseAim(); playerThrow(ax, ay); return; }
       var held = G.time - G.pressT, steady = held >= 0.22 && G.scope > 0.7;
       var sw = swayOffset(), x = G.aim.x + sw.x * easeOut(G.scope), y = G.aim.y + sw.y * easeOut(G.scope);
       if (!steady) { var an = rnd() * 6.283, d = rnd() * 9; x += Math.cos(an) * d; y += Math.sin(an) * d; }
@@ -3207,7 +3243,9 @@
     callouts: function () { return G.calloutLog.slice(); },
     enemyKnock: function () { return { k: G.enemy.kbK || null, t: G.enemy.kbT || 0 }; },
     camView: function () { var cz = G.cam.z; if (cz <= 1.001) return { z: 1, x0: 0, x1: W, y0: 0, y1: H }; var vx = clamp(G.cam.fx, W / (2 * cz), W - W / (2 * cz)), vy = clamp(G.cam.fy, H / (2 * cz), H - H / (2 * cz)); return { z: cz, x0: vx - W / (2 * cz), x1: vx + W / (2 * cz), y0: vy - H / (2 * cz), y1: vy + H / (2 * cz) }; },
-    slots: function () { return pSlots().slice(); }, bodyExt: function () { return playerBodyExt(); }, aimEase: function () { return aimEaseCfg(); }, centered: function () { return playerCentered(); },
+    slots: function () { return pSlots().slice(); }, aimGain: function () { return aimGain(); }, aimSpan: function () { return aimSpan(); }, marker: function () { return { on: !!G.markerOn, at: G.markerAt || null }; }, guideRing: function (x, y) { return guideRing(x, y); },
+    projAt: function (y) { var e = G.enemy; return proj(e.wx, y, e.z); },
+    solveAimAt: function (y) { var e = G.enemy; return solveAim({ x: e.wx, y: y, z: e.z }); }, bodyExt: function () { return playerBodyExt(); }, aimEase: function () { return aimEaseCfg(); }, centered: function () { return playerCentered(); },
     playerKnock: function () { return { k: G.player.kbK || null, t: G.player.kbT || 0 }; },
     dashing: function () { return !!G.enemy.dash; },
     coinShown: function () { return $('oCoinN').textContent; },
