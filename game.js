@@ -16,6 +16,20 @@
     stamina: { drain: 0.2, regen: 0.45, tiredUntil: 0.35 },   // duck stamina per second (1 = full bar)
     player: { baseHealth: 100 },
     headMult: 2,            // head hits do double damage
+    legMult: 0.75,          // leg hits ("TOE STUBBED!") do 75% damage
+    // Juice: slow-mo shot cam. slowmo = time scale; slowWindow = sim seconds before impact when slow-mo kicks in
+    // (0.3 s of sim at 0.3x = ~1 s real). holdReal/outReal/hitscanReal are real seconds. Tap skips.
+    juice: { slowmo: 0.3, slowWindow: 0.3, holdReal: 0.22, outReal: 0.14, hitscanReal: 0.6, zoomFollow: 1.15, zoomSlow: 1.7, zoomHold: 1.8, zoomHitscan: 1.5, maxChunks: 40 },
+    // Breakable cover: each cover is cols vertical columns (1 = full height). A direct hit removes `hit` from the
+    // struck column and `splash` from its neighbours (x shieldMult for Moon energy shields). Cover HP = average column
+    // height x 100. Your covers take playerMult of that. Only ONE cover per side can be destroyed per match: once one is gone the others can't drop a
+    // column below `floor`. A cover under collapseAt (and allowed to break) crumbles completely. Resets each match.
+    cover: { cols: 6, hit: 0.5, splash: 0.22, shieldMult: 0.5, playerMult: 0.6, floor: 0.65, collapseAt: 0.25 },
+    // Enemy aim warning: red laser sweeps your covers for aimLine[era] seconds before each bot shot; the last aimLock
+    // seconds it is locked on the cover it will fire at.
+    aimLine: [1.0, 0.9, 0.85, 0.75, 0.7], aimLock: 0.25,
+    // Moving target: during your throw turn he dashes between his covers at runSpeed[era] (world units / s).
+    runSpeed: [1.6, 2.0, 2.5, 3.0, 3.6], dashChance: [0.35, 0.4, 0.45, 0.5, 0.55],
     // Bot stats per era index, scaled gently by the player's trophies:
     //   health = baseHealth[era] + trophies * healthPerTrophy
     //   damage = baseDamage[era] + trophies * damagePerTrophy   (x headMult on a head hit)
@@ -132,7 +146,16 @@
 
   // ---------- seeded RNG (mulberry32) ----------
   var seedState = 0;
-  function setSeed(n) { seedState = (n >>> 0) || 1; }
+  function setSeed(n) { seedState = (n >>> 0) || 1; seed2 = (seedState * 7 + 3) >>> 0; }
+  var seed2 = 7;
+  function rnd2() {
+    seed2 = (seed2 + 0x6D2B79F5) >>> 0;
+    var t = seed2;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  function rr2(a, b) { return a + (b - a) * rnd2(); }
   function rnd() {
     seedState = (seedState + 0x6D2B79F5) >>> 0;
     var t = seedState;
@@ -253,6 +276,9 @@
   function weaponOf(era) { var id = SAVE.equip.weapons[era.id]; return BALANCE.weapons[era.id].filter(function (w) { return w.id === id; })[0] || BALANCE.weapons[era.id][0]; }
   function outfitOf(era) { var id = SAVE.equip.outfits[era.id]; return BALANCE.outfits[era.id].filter(function (w) { return w.id === id; })[0] || BALANCE.outfits[era.id][0]; }
   function playerDamage(head) { var w = weaponOf(G.era), o = outfitOf(G.era); return Math.round(w.dmg * (1 + (o.dmgBonus || 0)) * (head ? BALANCE.headMult : 1)); }
+  function zoneMult(z) { return z === 'head' ? BALANCE.headMult : z === 'legs' ? BALANCE.legMult : 1; }
+  function isHitRes(r) { return r === 'head' || r === 'body' || r === 'legs'; }
+  function playerDamageZone(z) { var w = weaponOf(G.era), o = outfitOf(G.era); return Math.round(w.dmg * (1 + (o.dmgBonus || 0)) * zoneMult(z)); }
   function playerMaxHp() { return BALANCE.player.baseHealth + (outfitOf(G.era).hp || 0); }
   function botStats(era, trophies) {
     var b = BALANCE.bot, i = era.idx;
@@ -282,7 +308,9 @@
     lastShot: null, shotLog: [], botLog: [], roundGain: { p: 0, b: 0 },
     stats: { shots: 0, hits: 0, heads: 0, dodges: 0, botHits: 0 },
     result: null, lastReward: null, rewarded: false,
-    shieldOpen: false
+    shieldOpen: false,
+    cam: { on: false, mode: '', id: 0, t: 0, tot: 0, z: 1, fx: 195, fy: 422, hx: 0, hy: 0, holdFor: 0 }, camStarts: 0, camSkips: 0,
+    flashY: 0, covers: null, lastCallout: null, calloutLog: []
   };
   // ---------- audio (WebAudio synth; resumes on first gesture for iOS) ----------
   // After a phone call / app switch, iOS leaves AudioContext in 'interrupted' or 'suspended'.
@@ -377,6 +405,7 @@
     bonk: function () { tone(240, 0.12, 'square', 0.14, 520); tone(700, 0.1, 'sine', 0.2, 1100, 0.05); },
     clonk: function () { tone(170, 0.14, 'triangle', 0.3, 120); noise(0.08, 0.2, 2500); },
     thud: function () { noise(0.25, 0.3, 380); },
+    tick: function () { tone(1900, 0.035, 'square', 0.05); },
     coin: function () { tone(1300, 0.08, 'square', 0.08); tone(1750, 0.12, 'square', 0.08, null, 0.07); },
     win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.22, 'triangle', 0.18, null, i * 0.12); }); },
     lose: function () { [494, 440, 392, 330].forEach(function (f, i) { tone(f, 0.26, 'triangle', 0.16, null, i * 0.16); }); }
@@ -1337,6 +1366,7 @@
     c.save();
     c.beginPath(); c.rect(g.x - 3 * g.s, g.foot - 3 * g.s, 6 * g.s, 3 * g.s); c.clip();
     c.translate(g.x, g.foot + g.sink * g.s); c.scale(g.s, g.s);
+    applyKnock(c, e, 1);
     var hurt = e.hitT > 0 || G.ko === 'bot';
     var aiming = enemyAiming(), wind = G.phase === 'botFire' && G.tell > 0, look = era.bot.look;
     if (look === 'soldier') {
@@ -1363,9 +1393,13 @@
     c.restore();
     if (era.cover.spots) {
       for (var ri = 0; ri < era.cover.spots.length; ri++) {
-        var rg = coverGeomAt(ri);
-        if (era.cover.kind === 'halftone') drawCover(c, rg.x, rg.base, rg.w, G.coverH * rg.s, res, true);
-        else drawEraCover(c, rg.x, rg.base, rg.s, rg.w / rg.s, G.coverH, era.cover.kind);
+        var rg = coverGeomAt(ri), ecols = coverCols('e', ri), eclip = ecols && coverClipBegin(c, ecols, rg.x, rg.base, rg.w, G.coverH * rg.s);
+        if (!ecols || !coverGone(ecols)) {
+          if (era.cover.kind === 'halftone') drawCover(c, rg.x, rg.base, rg.w, G.coverH * rg.s, res, true);
+          else drawEraCover(c, rg.x, rg.base, rg.s, rg.w / rg.s, G.coverH, era.cover.kind);
+        }
+        if (eclip) c.restore();
+        if (ecols) drawRubble(c, ecols, rg.x, rg.base, rg.w, G.coverH * rg.s, era.cover.kind);
       }
     } else if (era.cover.kind === 'halftone') drawCover(c, cg.x, cg.base, cg.w, G.coverH * cg.s, res, true);
     else drawEraCover(c, cg.x, cg.base, cg.s, cg.w / cg.s, G.coverH, era.cover.kind);
@@ -1445,6 +1479,7 @@
   function drawPlayer(c) {
     var p = G.player, outfit = G.era.player.outfit, look = outfitOf(G.era).look || {};
     c.save(); c.translate(PX, PY); c.scale(PS, PS);
+    applyKnock(c, p, 260);
     var shake = p.hitT > 0 ? Math.sin(G.time * 60) * 4 * p.hitT : 0;
     c.fillStyle = 'rgba(140,40,60,.35)'; c.beginPath(); c.ellipse(4, 0, 74, 14, 0, 0, 7); c.fill();
     c.translate(shake, 0);
@@ -1718,7 +1753,7 @@
         star(c, f.x, f.y, sc * 0.86, sc * 0.46, 10, f.rot); c.fillStyle = f.col || '#ffe14a'; c.fill();
         c.lineWidth = Math.max(1.5, sc * 0.06); c.strokeStyle = '#ff7a2a'; c.stroke();
         c.fillStyle = '#c21f4a'; c.font = '900 ' + Math.round(sc * 0.5) + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(f.text, f.x, f.y + 1);
+        if (f.text) c.fillText(f.text, f.x, f.y + 1);
         c.restore();
       } else if (f.k === 'puff') {
         c.save(); c.globalAlpha = (1 - u) * 0.85;
@@ -1741,6 +1776,10 @@
       } else if (f.k === 'flash') {
         c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 1 - u;
         star(c, f.x, f.y, f.size, f.size * 0.4, 7, f.rot); c.fillStyle = '#ffec8a'; c.fill(); c.restore();
+      } else if (f.k === 'chunk') {
+        var kx = f.x + f.vx * f.t, ky = f.y + f.vy * f.t + 0.5 * f.g * f.t * f.t, kr = f.r;
+        c.save(); c.globalAlpha = u > 0.7 ? (1 - u) / 0.3 : 1; c.translate(kx, ky); c.rotate(f.rot + f.t * f.spin); c.fillStyle = f.col;
+        c.beginPath(); c.moveTo(-kr, -kr * 0.6); c.lineTo(kr * 0.8, -kr); c.lineTo(kr, kr * 0.7); c.lineTo(-kr * 0.6, kr); c.closePath(); c.fill(); c.restore();
       } else if (f.k === 'tracer') {
         c.save(); c.globalAlpha = 1 - u; c.strokeStyle = f.col || '#fff6b0'; c.lineWidth = f.col === '#39e0ff' ? 5 : 3; c.lineCap = 'round';
         var tt = Math.min(1, u * 3), bx = f.x + (f.x2 - f.x) * tt, by = f.y + (f.y2 - f.y) * tt;
@@ -1753,7 +1792,7 @@
   }
   function drawTexts(c) {
     for (var i = 0; i < G.fx.length; i++) {
-      var f = G.fx[i]; if (f.k !== 'txt') continue;
+      var f = G.fx[i]; if (f.k === 'num') { drawNum(c, f); continue; } if (f.k !== 'txt') continue;
       var u = f.t / f.life, p = f.layer === 'world' ? toScreen(f.x, f.y) : { x: f.x, y: f.y };
       var y = p.y - 26 - u * 40, al = u > 0.6 ? 1 - (u - 0.6) / 0.4 : 1, sc = u < 0.12 ? 0.6 + u * 3.3 : 1;
       c.save(); c.globalAlpha = al; c.translate(clamp(p.x, 70, W - 70), y); c.scale(sc, sc);
@@ -1767,6 +1806,240 @@
   function puff(x, y, size, layer) {
     var parts = []; for (var i = 0; i < 6; i++) parts.push({ dx: Math.cos(i * 1.1) * (0.5 + (i % 3) * 0.2), dy: Math.sin(i * 1.7) * 0.4, s: 0.6 + (i % 3) * 0.25 });
     addFx({ k: 'puff', x: x, y: y, size: size, parts: parts, life: 0.8, layer: layer });
+  }
+
+  // =====================================================================
+  // JUICE: hit zones + callouts, bouncing numbers, breakable cover, knockback, slow-mo shot cam, aim laser, dashes
+  // =====================================================================
+  var ZONE_TEXT = { head: 'BONK!', body: 'OOF!', legs: 'TOE STUBBED!' };
+  var ERA_FLAVOR = { stone: 'UGGA!', castle: 'CLANG!', wildwest: 'YEE-OUCH!', modern: 'HOOAH!', space: 'ZORP!' };
+  function callout(text, sub, col, size) {
+    for (var i = G.fx.length - 1; i >= 0; i--) if (G.fx[i].k === 'callout') G.fx.splice(i, 1);
+    G.lastCallout = text; G.calloutLog.push(text); if (G.calloutLog.length > 20) G.calloutLog.shift();
+    addFx({ k: 'callout', text: text, sub: sub || '', col: col || '#ffe14a', size: size || 60, rot: (rnd2() - 0.5) * 0.22, life: 1.1, layer: 'screen' });
+  }
+  function drawCallouts(c) {
+    for (var i = 0; i < G.fx.length; i++) {
+      var f = G.fx[i]; if (f.k !== 'callout') continue;
+      var u = f.t / f.life, pop = u < 0.12 ? 0.35 + (u / 0.12) * 0.95 : u < 0.22 ? 1.3 - (u - 0.12) * 3 : 1, al = u > 0.72 ? 1 - (u - 0.72) / 0.28 : 1;
+      var size = f.size;
+      c.save(); c.globalAlpha = al; c.translate(CX, H * 0.29 - u * 16); c.rotate(f.rot + Math.sin(f.t * 22) * 0.05 * (1 - u)); c.scale(pop, pop);
+      c.font = '900 ' + size + 'px ' + FONT; var tw = c.measureText(f.text).width;
+      if (tw > W * 0.88) { size = Math.floor(size * W * 0.88 / tw); c.font = '900 ' + size + 'px ' + FONT; }
+      c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+      c.lineWidth = size * 0.24; c.strokeStyle = '#2a1036'; c.strokeText(f.text, 0, 0);
+      c.lineWidth = size * 0.1; c.strokeStyle = '#fff'; c.strokeText(f.text, 0, 0);
+      c.fillStyle = f.col; c.fillText(f.text, 0, 0);
+      if (f.sub) {
+        var ss = Math.round(size * 0.4); c.font = '900 ' + ss + 'px ' + FONT;
+        c.lineWidth = ss * 0.25; c.strokeStyle = '#2a1036'; c.strokeText(f.sub, 0, size * 0.78);
+        c.fillStyle = '#fff'; c.fillText(f.sub, 0, size * 0.78);
+      }
+      c.restore();
+    }
+  }
+  function drawNum(c, f) {
+    var u = f.t / f.life, p = f.layer === 'world' ? toScreen(f.x, f.y) : { x: f.x, y: f.y };
+    var hop = Math.abs(Math.sin(f.t * 8)) * 44 * Math.exp(-f.t * 3.2), y = p.y - 22 - hop - f.t * 18, x = clamp(p.x + f.vx * f.t, 40, W - 40);
+    var al = u > 0.7 ? 1 - (u - 0.7) / 0.3 : 1, sc = f.t < 0.1 ? 0.5 + f.t * 6 : 1 + 0.15 * Math.exp(-(f.t - 0.1) * 6);
+    c.save(); c.globalAlpha = al; c.translate(x, y); c.scale(sc, sc);
+    c.font = '900 ' + (f.size || 28) + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineJoin = 'round';
+    c.lineWidth = 6; c.strokeStyle = 'rgba(40,16,40,.9)'; c.strokeText(f.text, 0, 0);
+    c.fillStyle = '#fff'; c.fillText(f.text, 0, 0);
+    c.restore();
+  }
+  function drawSlowMoBars(c) {
+    var a = clamp((G.cam.z - 1) / 0.4, 0, 1), bh = H * 0.055 * a;
+    if (bh < 1) return;
+    c.save(); c.fillStyle = 'rgba(10,6,20,.55)'; c.fillRect(0, 0, W, bh); c.fillRect(0, H - bh, W, bh);
+    c.globalAlpha = a * 0.9; c.fillStyle = '#fff'; c.font = '800 12px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('SLOW-MO · tap to skip', CX, H - bh / 2);
+    c.restore();
+  }
+
+  // ---------- breakable cover (shared by the drawn shape and the collision) ----------
+  var COVER_COLS = { rock: ['#b88c70', '#937058', '#7a5a48'], haystack: ['#e8c04a', '#c9a038', '#f4d870'], barrel: ['#8a5a2a', '#a06a38', '#3a2410'],
+    shield: ['#39e0ff', '#b48cff', '#e8ffff'], pillar: ['#8a8894', '#6e6c78', '#9a98a4'], sandbag: ['#c9a86a', '#b89858', '#a88848'], halftone: ['#ff9aef', '#ffd23f'] };
+  var BOX_COVERS = { barrel: 1, pillar: 1, sandbag: 1 };
+  function freshCovers() { var n = BALANCE.cover.cols, mk = function () { var a = []; for (var i = 0; i < n; i++) a.push(1); return a; }; return { e: [mk(), mk(), mk()], p: [mk(), mk(), mk()] }; }
+  function coverCols(side, i) { return G.covers && G.covers[side] ? G.covers[side][i] || null : null; }
+  function colAt(cols, frac) { var n = cols.length; return cols[clamp(Math.floor((frac + 1) / 2 * n), 0, n - 1)]; }
+  function colSum(a) { var t = 0; for (var k = 0; k < a.length; k++) t += a[k]; return t; }
+  function coverGone(a) { return colSum(a) <= 0.0001; }
+  function coverHpPct(side, i) { var a = coverCols(side, i); return a ? Math.round(colSum(a) / a.length * 100) : 100; }
+  function coverDestroyed(side, i) { var a = coverCols(side, i); return !!a && coverGone(a); }
+  function coverProfile(kind, frac) { return BOX_COVERS[kind] ? 1 : Math.sqrt(Math.max(0, 1 - frac * frac)); }
+  // returns HP% lost. Only one cover per side may be destroyed per match: the others bottom out at `floor`.
+  function damageCover(side, i, frac, mult) {
+    var a = coverCols(side, i); if (!a || coverGone(a)) return 0;
+    var B = BALANCE.cover, n = a.length, c0 = clamp(Math.floor((frac + 1) / 2 * n), 0, n - 1), before = colSum(a), otherDown = false;
+    for (var j = 0; j < 3; j++) if (j !== i && coverDestroyed(side, j)) otherDown = true;
+    var floor = otherDown ? B.floor : 0;
+    for (var k = 0; k < n; k++) {
+      var d = (k === c0 ? B.hit : Math.abs(k - c0) === 1 ? B.splash : 0) * (mult || 1);
+      if (d && a[k] > floor) a[k] = Math.max(floor, a[k] - d);
+    }
+    if (!otherDown && colSum(a) / n <= B.collapseAt) for (var m = 0; m < n; m++) a[m] = 0;
+    return (before - colSum(a)) / n * 100;
+  }
+  function chunks(x, y, s, cols, n, layer) {
+    var have = 0; for (var i = 0; i < G.fx.length; i++) if (G.fx[i].k === 'chunk') have++;
+    n = Math.min(n, BALANCE.juice.maxChunks - have);
+    for (var k = 0; k < n; k++) addFx({ k: 'chunk', x: x, y: y, vx: (rnd2() - 0.5) * s * 3.2, vy: -(s * 1.2 + rnd2() * s * 2.2), g: s * 8, r: Math.max(2, s * (0.05 + rnd2() * 0.06)), col: cols[k % cols.length], rot: rnd2() * 6, spin: (rnd2() - 0.5) * 14, life: 0.6 + rnd2() * 0.35, layer: layer });
+  }
+  function hitCover(side, i, frac, sx, sy, s) {
+    var kind = side === 'e' ? G.era.cover.kind : playerCoverKind(), layer = side === 'e' ? 'world' : 'near';
+    var lost = damageCover(side, i, frac, (kind === 'shield' ? BALANCE.cover.shieldMult : 1) * (side === 'p' ? BALANCE.cover.playerMult : 1));
+    if (lost <= 0) return 0;
+    var cols = COVER_COLS[kind] || COVER_COLS.rock;
+    chunks(sx, sy, s, cols, 7, layer);
+    if (coverDestroyed(side, i)) {
+      chunks(sx, sy + s * 0.3, s * 1.2, cols, 12, layer); puff(sx, sy, s * 0.9, layer);
+      addFx({ k: 'txt', x: sx, y: sy - 20, text: kind === 'shield' ? 'SHIELD DOWN!' : 'SMASHED!', col: '#ffe14a', size: 22, life: 1.1, layer: layer });
+      sfx.thud();
+    }
+    return lost;
+  }
+  // world point on the enemy cover plane -> { i, frac } of the cover that blocks it, or null. Matches the clipped drawing.
+  function enemyCoverHit(x, y) {
+    var co = G.era.cover, cs = coverSpots();
+    if (y < 0) return null;
+    for (var ci = 0; ci < cs.length; ci++) {
+      var fr = (x - cs[ci]) / co.halfW;
+      if (Math.abs(fr) >= 1) continue;
+      var cols = coverCols('e', ci), cut = cols ? colAt(cols, fr) : 1;
+      if (y < G.coverH * Math.min(coverProfile(co.kind, fr), cut)) return { i: ci, frac: fr };
+    }
+    return null;
+  }
+  function coverClipBegin(c, cols, x, base, wPx, hPx) {
+    var n = cols.length, full = true;
+    for (var k = 0; k < n; k++) if (cols[k] < 0.999) full = false;
+    if (full) return false;
+    var x0 = x - wPx * 0.5, cw = wPx / n, ext = wPx * 0.3, low = base + hPx * 0.4;
+    c.save(); c.beginPath(); c.moveTo(x0 - ext, low);
+    for (var i = 0; i < n; i++) {
+      var v = cols[i], xa = i === 0 ? x0 - ext : x0 + i * cw, xb = i === n - 1 ? x0 + wPx + ext : x0 + (i + 1) * cw;
+      if (v >= 0.999) { c.lineTo(xa, base - hPx * 1.6); c.lineTo(xb, base - hPx * 1.6); continue; }
+      if (v <= 0.001) { c.lineTo(xa, low); c.lineTo(xb, low); continue; }
+      var top = base - v * hPx, jag = hPx * 0.06;
+      c.lineTo(xa, top + jag * 0.5); c.lineTo(xa + (xb - xa) * 0.35, top - jag); c.lineTo(xa + (xb - xa) * 0.7, top + jag * 0.8); c.lineTo(xb, top - jag * 0.3);
+    }
+    c.lineTo(x0 + wPx + ext, low); c.closePath(); c.clip();
+    return true;
+  }
+  function drawRubble(c, cols, x, base, wPx, hPx, kind) {
+    var n = cols.length, cw = wPx / n, pal = COVER_COLS[kind] || COVER_COLS.rock;
+    if (kind === 'shield') {
+      for (var j = 0; j < n; j++) if (cols[j] < 0.999) { c.fillStyle = 'rgba(57,224,255,.5)'; c.fillRect(x - wPx / 2 + j * cw + cw * 0.2, base - 2, cw * 0.6, 3); }
+      return;
+    }
+    for (var i = 0; i < n; i++) {
+      var miss = 1 - cols[i]; if (miss < 0.05) continue;
+      var cx = x - wPx / 2 + (i + 0.5) * cw, r = Math.max(2, cw * 0.22 * (0.6 + miss));
+      c.fillStyle = pal[1]; c.beginPath(); c.ellipse(cx - cw * 0.2, base - r * 0.4, r, r * 0.6, 0.3, 0, 7); c.fill();
+      c.fillStyle = pal[0]; c.beginPath(); c.ellipse(cx + cw * 0.22, base - r * 0.3, r * 0.75, r * 0.5, -0.4, 0, 7); c.fill();
+    }
+  }
+
+  // ---------- knockback (cosmetic; hitboxes are unchanged) ----------
+  var KNOCK_DUR = { head: 0.6, body: 0.45, legs: 0.75 };
+  function knock(o, zone, dir) { o.kbK = zone; o.kbDur = KNOCK_DUR[zone] || 0.45; o.kbT = o.kbDur; o.kbDir = dir || 1; }
+  function applyKnock(c, o, unit) {
+    if (!(o.kbT > 0)) return;
+    var u = 1 - o.kbT / o.kbDur, d = o.kbDir || 1, k = o.kbK;
+    if (k === 'head') { c.rotate(d * 0.3 * Math.sin(u * Math.PI * 3) * (1 - u)); }             // stagger: wobble on the feet
+    else if (k === 'legs') {                                                                     // stumble / flop, quick recovery
+      var a = u < 0.28 ? easeOut(u / 0.28) : Math.pow(1 - (u - 0.28) / 0.72, 2);
+      c.translate(d * 0.1 * unit * a, 0.16 * unit * a); c.rotate(d * 1.0 * a);
+    } else { var b = Math.pow(1 - u, 2); c.translate(d * 0.16 * unit * b, 0); c.rotate(d * 0.22 * b); }  // body: knocked back
+  }
+
+  // ---------- slow-mo shot cam ----------
+  function camOff() { var c = G.cam; c.on = false; c.mode = ''; c.z = 1; c.fx = CX; c.fy = H / 2; }
+  function camStart(id, pt) {
+    var c = G.cam, J = BALANCE.juice;
+    if (c.z <= 1.001) { c.fx = CX; c.fy = H / 2; }
+    c.on = true; c.id = id || 0; c.t = 0; c.tot = 0; G.camStarts++;
+    if (pt) { c.mode = 'hold'; c.hx = pt.x; c.hy = pt.y; c.holdFor = J.hitscanReal; }
+    else { c.mode = 'follow'; c.holdFor = J.holdReal; }
+  }
+  function camScale() { var c = G.cam; return c.on && (c.mode === 'slow' || c.mode === 'hold') ? BALANCE.juice.slowmo : 1; }
+  function camSkip() { if (!G.cam.on) return false; camOff(); G.camSkips++; return true; }
+  function timeToImpact(pr) {
+    var e = G.enemy, g = G.era.shot.g || 1, te = pr.vz > 0.01 ? (e.z - pr.z) / pr.vz : 9;
+    var tg = (pr.vy + Math.sqrt(Math.max(0, pr.vy * pr.vy + 2 * g * Math.max(0, pr.y)))) / g;
+    if (te < 0) te = 9;
+    return Math.min(te, tg);
+  }
+  function camUpdate(rdt) {
+    if (G.flashY > 0) G.flashY = Math.max(0, G.flashY - rdt * 6);
+    for (var i = G.fx.length - 1; i >= 0; i--) { var f = G.fx[i]; if (f.layer !== 'screen') continue; f.t += rdt; if (f.t >= f.life) G.fx.splice(i, 1); }
+    var c = G.cam, J = BALANCE.juice;
+    if (!c.on) return;
+    c.t += rdt; c.tot += rdt;
+    var tx = c.fx, ty = c.fy, tz = 1, rate = 10;
+    if (c.mode === 'follow' || c.mode === 'slow') {
+      var pr = null; for (var k = 0; k < G.proj.length; k++) if (G.proj[k].id === c.id) pr = G.proj[k];
+      if (!pr) { c.mode = 'hold'; c.t = 0; c.holdFor = J.holdReal; }
+      else {
+        var q = proj(pr.x, pr.y, pr.z), e = G.enemy, eq = proj(e.wx, 0.9, e.z);
+        if (c.mode === 'follow' && timeToImpact(pr) < J.slowWindow) { c.mode = 'slow'; c.t = 0; }
+        var w = c.mode === 'slow' ? 0.35 : 0.5;
+        tx = q.x + (eq.x - q.x) * w; ty = q.y + (eq.y - q.y) * w; tz = c.mode === 'slow' ? J.zoomSlow : J.zoomFollow;
+      }
+    }
+    if (c.mode === 'hold') { tx = c.hx; ty = c.hy; tz = c.id ? J.zoomHold : J.zoomHitscan; if (c.t >= c.holdFor) { c.mode = 'out'; c.t = 0; } }
+    if (c.mode === 'out') { tx = CX; ty = H / 2; tz = 1; rate = 18; if (c.t >= J.outReal) { camOff(); return; } }
+    if (c.tot > 4.5) { camOff(); return; }
+    var a = Math.min(1, rdt * rate);
+    c.fx += (tx - c.fx) * a; c.fy += (ty - c.fy) * a; c.z += (tz - c.z) * Math.min(1, rdt * (c.mode === 'out' ? 18 : c.mode === 'hold' ? 14 : 8));
+  }
+
+  // ---------- moving target: dash to another cover during your throw turn ----------
+  function startDash() {
+    var e = G.enemy, sp = G.era.cover.spots, cur = e.slot != null ? e.slot : nearestIdx(sp, e.wx), opts = [], i;
+    for (i = 0; i < sp.length; i++) if (i !== cur && Math.abs(i - cur) === 1 && !coverDestroyed('e', i)) opts.push(i);
+    if (!opts.length) for (i = 0; i < sp.length; i++) if (i !== cur && !coverDestroyed('e', i)) opts.push(i);
+    if (!opts.length) { e.actT = rr2(0.8, 1.4); return; }
+    var n = opts[Math.floor(rnd2() * opts.length)];
+    e.dash = true; e.slot = n; e.baseWx = sp[n]; e.tx = sp[n]; e.duckTarget = 0; e.duckT = 0; e.dashes = (e.dashes || 0) + 1;
+  }
+
+  // ---------- enemy aim warning: red laser sweeps your covers, locks, then fires ----------
+  function aimPhaseOf(s) {
+    if (!s.told || s.fired) return null;
+    var dur = Math.max(0.01, s.fireAt - s.tellAt);
+    return (G.pt - s.tellAt) >= dur - BALANCE.aimLock ? 'lock' : 'sweep';
+  }
+  function aimLineInfo() {
+    if (G.phase !== 'botFire' || !multiSlot() || G.ko) return null;
+    for (var i = 0; i < G.botShots.length; i++) {
+      var s = G.botShots[i]; if (!s.told || s.fired || s.target == null) continue;
+      var dur = Math.max(0.01, s.fireAt - s.tellAt), el = clamp(G.pt - s.tellAt, 0, dur), sweepT = Math.max(0.01, dur - BALANCE.aimLock);
+      var ph = el >= sweepT ? 'lock' : 'sweep', tgtX = W * pSlots()[s.target], x = tgtX, y = PY - 290 * PS;
+      if (ph === 'sweep') {
+        var v = el / sweepT, fromX = W * pSlots()[s.sweepFrom != null ? s.sweepFrom : (s.target === 0 ? 2 : 0)];
+        x = clamp(tgtX + (fromX - tgtX) * Math.cos(v * Math.PI * 2.5) * Math.pow(1 - v, 1.1), 12, W - 12);
+        y += Math.sin(v * 9) * 14 * PS * (1 - v);
+      }
+      return { phase: ph, x: x, y: y, target: s.target, u: el / dur, shot: s };
+    }
+    return null;
+  }
+  function drawAimLine(c) {
+    var a = aimLineInfo(); if (!a) return;
+    var g = enemyGeom(), o = G.era.bot.tell === 'glint' ? g.lens : g.hand, lock = a.phase === 'lock';
+    var blink = lock ? (Math.sin(G.time * 40) > -0.3 ? 1 : 0.55) : 0.85;
+    c.save(); c.lineCap = 'round';
+    c.globalAlpha = 0.3 * blink; c.strokeStyle = '#ff2a40'; c.lineWidth = lock ? 11 : 7;
+    c.beginPath(); c.moveTo(o.x, o.y); c.lineTo(a.x, a.y); c.stroke();
+    c.globalAlpha = blink; c.strokeStyle = lock ? '#ff6070' : '#ff2a40'; c.lineWidth = lock ? 3.5 : 2;
+    c.beginPath(); c.moveTo(o.x, o.y); c.lineTo(a.x, a.y); c.stroke();
+    c.fillStyle = '#ff2a40'; c.beginPath(); c.arc(a.x, a.y, lock ? 10 : 7, 0, 7); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(a.x, a.y, lock ? 4 : 3, 0, 7); c.fill();
+    if (lock) { c.font = '900 15px ' + FONT; c.textAlign = 'center'; c.lineWidth = 4; c.strokeStyle = 'rgba(40,10,20,.85)'; c.strokeText('LOCKED!', a.x, a.y - 74 * PS); c.fillStyle = '#ff9aa8'; c.fillText('LOCKED!', a.x, a.y - 74 * PS); }
+    c.restore();
   }
 
   // ---------- scope ----------
@@ -1942,8 +2215,9 @@
     G.round = 1; G.sudden = 0; G.dmgP = 0; G.dmgB = 0; G.ko = null; G.koT = 0;
     G.maxP = playerMaxHp(); G.hpP = G.maxP; G.bot = botStats(era, SAVE.trophies); G.maxB = G.bot.hp; G.hpB = G.maxB;
     G.fx = []; G.stuck = []; G.proj = []; G.botSpears = []; G.nearStuck = []; G.shotLog = []; G.botLog = []; G.result = null; G.lastReward = null; G.rewarded = false; G.shieldOpen = false;
-    G.stats = { shots: 0, hits: 0, heads: 0, dodges: 0, botHits: 0 };
+    G.stats = { shots: 0, hits: 0, heads: 0, dodges: 0, botHits: 0, legs: 0 };
     G.enemy.dizzy = 0; G.enemy.throwT = 0;
+    G.covers = freshCovers(); G.calloutLog = []; G.lastCallout = null;  // cover damage persists across rounds, resets per match
     placePlayer(Math.floor(pSlots().length / 2));
     hideOverlays();
     beginRound();
@@ -1956,6 +2230,7 @@
     if (spots) {
       // He starts behind the rock he was at, dashes (sometimes via a decoy rock) to a random rock, and peeks once before the cover drops.
       var cur = nearestIdx(spots, e.wx), fin = Math.floor(rnd() * spots.length), t0 = rr(0.4, 0.8), plan = [];
+      if (G.covers && coverDestroyed('e', fin)) { for (var fk = 1; fk < spots.length; fk++) { var alt = (fin + fk) % spots.length; if (!coverDestroyed('e', alt)) { fin = alt; break; } } }
       if (fin === cur || rnd() < 0.5) { var dec; do { dec = Math.floor(rnd() * spots.length); } while (dec === cur || dec === fin); plan.push({ at: t0, to: dec }); t0 += rr(1.1, 1.5); }
       plan.push({ at: t0, to: fin });
       e.plan = plan; e.peekAt = rr(3.9, 4.2); e.slot = fin;
@@ -1966,6 +2241,7 @@
       if (Math.abs(nx - prev) < sep) nx = Math.abs(lane[0] - prev) > Math.abs(lane[1] - prev) ? lane[0] : lane[1];
       e.wx = nx; e.tx = nx;
     }
+    camOff(); e.dash = false; e.kbT = 0; e.kbK = null; G.player.kbT = 0; G.player.kbK = null;
     e.baseWx = nx; e.z = rr(era.dist[0], era.dist[1]); e.duck = 1; e.duckTarget = 1; e.flash = 0; e.hitT = 0; e.hatOff = 0; e.duckT = 0; e.dizzy = 0; e.throwT = 0;
     G.coverH = era.cover.tall; G.coverT = 1; G.coverFrom = G.coverTo = era.cover.tall;
     G.shotsP = CFG.shots; G.shotsB = CFG.shots; G.cool = 0; G.tell = 0; G.botShots = []; G.ending = false;
@@ -1981,12 +2257,12 @@
   function startAim() {
     setPhase('aim'); showCount(0); G.countNum = 0; clearDragMove();
     if (G.era.cover.low !== G.coverH) dropCover(G.era.cover.low);
-    G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null;
+    G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null; G.enemy.dash = false;
     var cg = coverGeom(); G.aim.x = cg.x; G.aim.y = cg.top - 60;
     var hold = G.era.bannerHold || 0.8;
     banner(G.era.id === 'stone' ? 'THROW! Pull down to aim!' : (G.era.shot.kind === 'arc' ? 'THROW! Pull down!' : 'SHOOT! Pull down!'), 'go', hold); sfx.go();
   }
-  function endAim() { releaseAim(); setPhase('swap'); banner('SWAP! YOUR TURN TO HIDE', 'good'); hint(''); }
+  function endAim() { releaseAim(); camOff(); setPhase('swap'); banner('SWAP! YOUR TURN TO HIDE', 'good'); hint(''); }
   function startPlayerHide() { setPhase('playerHide'); G.countNum = 0; banner("YOU'RE HIDING"); hint(multiSlot() ? 'Slide your finger to hide' : ''); releaseAim(); clearDragMove(); sfx.whoosh(); G.player.stam = 1; G.player.tired = false; }
   function startBotFire() {
     setPhase('botFire'); showCount(0); G.countNum = 0; clearDragMove();
@@ -1994,8 +2270,8 @@
     banner('DODGE!', 'go', 0.8); hint(multiSlot() ? 'Slide to a cover · or hold DUCK' : ''); sfx.go();
     var arc = G.era.shot.kind === 'arc', fl = G.era.bot.flight || 0, t = rr(1.0, 1.5); G.botShots = [];
     for (var i = 0; i < CFG.shots; i++) {
-      var lead = rr(0.6, 1.0);
-      G.botShots.push({ tellAt: t - lead, fireAt: t, impactAt: t + fl, told: false, fired: false, done: false, intent: null });
+      rnd(); var lead = BALANCE.aimLine[G.era.idx] || 0.8;
+      G.botShots.push({ tellAt: t - lead, fireAt: t, impactAt: t + fl, told: false, fired: false, done: false, intent: null, sweepFrom: null });
       t += arc ? rr(2.0, 2.5) : rr(1.5, 2.0);
     }
   }
@@ -2062,6 +2338,7 @@
     var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed;
     var pr = { id: ++projId, x: O.x, y: O.y, z: O.z, vx: d.x * v, vy: d.y * v, vz: d.z * v, t: 0 };
     G.proj.push(pr);
+    camStart(pr.id, null);
     return { id: pr.id };
   }
   function stepProj(dt) {
@@ -2075,16 +2352,14 @@
         pr.vy -= g * h; pr.x += pr.vx * h; pr.y += pr.vy * h; pr.z += pr.vz * h; pr.t += h;
         if (pz < zc && pr.z >= zc) {
           f = (zc - pz) / (pr.z - pz); x = px + (pr.x - px) * f; y = py + (pr.y - py) * f;
-          for (var ci = 0; ci < cs.length && !res; ci++) {
-            var dx = x - cs[ci];
-            if (Math.abs(dx) < co.halfW && y >= 0 && y < G.coverH * Math.sqrt(1 - (dx / co.halfW) * (dx / co.halfW))) { res = 'blocked'; hit = { x: x, y: y, z: zc - 0.05 }; }
-          }
+          var ch = enemyCoverHit(x, y);
+          if (ch) { res = 'blocked'; hit = { x: x, y: y, z: zc - 0.05, cover: ch }; }
         }
         if (!res && pz < e.z && pr.z >= e.z) {
           f = (e.z - pz) / (pr.z - pz); x = px + (pr.x - px) * f; y = py + (pr.y - py) * f;
           var sink = e.duck * 1.25, hy = 1.45 - sink, ex = x - e.wx;
           if (ex * ex + (y - hy) * (y - hy) <= 0.31 * 0.31) res = 'head';
-          else if (Math.abs(ex) <= 0.32 && y >= 0 && y <= 1.26 - sink) res = 'body';
+          else if (Math.abs(ex) <= 0.32 && y >= 0 && y <= 1.26 - sink) res = y < (1.26 - sink) * 0.4 ? 'legs' : 'body';
           if (res) hit = { x: x, y: y, z: e.z };
         }
         if (!res && pr.y <= 0) { res = 'miss'; hit = { x: pr.x, y: 0, z: pr.z }; }
@@ -2096,12 +2371,17 @@
   function resolvePlayerShot(res, hit, dir, scr, id) {
     var e = G.enemy, g = enemyGeom(), dmg = 0;
     var sp = scr || (hit ? proj(hit.x, hit.y, hit.z) : { x: g.x, y: g.head.y - g.s });
-    if (res === 'head' || res === 'body') {
-      dmg = playerDamage(res === 'head');
-      G.hpB = Math.max(0, G.hpB - dmg); G.dmgP += dmg; G.roundGain.p += dmg; G.stats.hits++; if (res === 'head') { G.stats.heads++; e.dizzy = 1.3; }
+    G.cam.hx = sp.x; G.cam.hy = sp.y;
+    if (isHitRes(res)) {
+      dmg = playerDamageZone(res);
+      G.hpB = Math.max(0, G.hpB - dmg); G.dmgP += dmg; G.roundGain.p += dmg; G.stats.hits++; if (res === 'head') { G.stats.heads++; e.dizzy = 1.3; } if (res === 'legs') G.stats.legs = (G.stats.legs || 0) + 1;
       e.flash = 1.2; e.hitT = 1.0; e.duckTarget = 1;
-      addFx({ k: 'pow', x: sp.x, y: sp.y, size: g.s * (res === 'head' ? 0.75 : 0.6), text: res === 'head' ? 'BONK!' : 'POW!', rot: rnd() * 6, life: 0.75, layer: 'world' });
-      addFx({ k: 'txt', x: sp.x, y: sp.y - g.s * 0.3, text: (res === 'head' ? 'HEAD! -' : '-') + dmg, col: res === 'head' ? '#ffe14a' : '#fff', size: res === 'head' ? 26 : 26, life: 1.1, layer: 'world' });
+      addFx({ k: 'pow', x: sp.x, y: sp.y, size: g.s * (res === 'head' ? 0.75 : 0.6), text: '', rot: rnd() * 6, life: 0.6, layer: 'world' });
+      addFx({ k: 'flash', x: sp.x, y: sp.y, size: g.s * 0.9, rot: rnd2() * 6, life: 0.18, layer: 'world' });
+      addFx({ k: 'num', x: sp.x + g.s * 0.7, y: sp.y - g.s * 0.1, text: '-' + dmg, size: res === 'head' ? 34 : 28, vx: 20 + rnd2() * 30, life: 1.15, layer: 'world' });
+      callout(ZONE_TEXT[res], ERA_FLAVOR[G.era.id] || '', res === 'head' ? '#ffe14a' : res === 'legs' ? '#9af0ff' : '#ffb03a', res === 'legs' ? 50 : 62);
+      knock(e, res, sp.x < g.x ? 1 : -1);
+      G.shake = Math.max(G.shake, res === 'head' ? 11 : 8); G.flashY = 1;
       puff(sp.x, sp.y, g.s * 0.3, 'world');
       if (res === 'head' && G.era.bot.look === 'cactus') { e.hatOff = 1; addFx({ k: 'hat', x: g.head.x, y: g.head.y - g.head.r * 1.2, vx: (rnd() < 0.5 ? -1 : 1) * rr(0.6, 1.2) * g.s, vy: 3.4 * g.s, g: 5.5 * g.s, s: g.s, life: 0.95, layer: 'world' }); }
       if (res === 'head') sfx.head(); else sfx.bonk();
@@ -2109,6 +2389,8 @@
       if (G.hpB <= 0) knockOut('bot');
     } else if (res === 'blocked') {
       if (hit && dir) { G.stuck.push({ p: hit, d: dir, t: 0 }); }
+      var cvh = (hit && hit.cover) || cover_hit_scr;
+      if (cvh) hitCover('e', cvh.i, cvh.frac, sp.x, sp.y, g.s);
       addFx({ k: 'spark', x: sp.x, y: sp.y, size: g.s * 0.5, rot: rnd(), life: 0.45, layer: 'world' });
       addFx({ k: 'txt', x: sp.x, y: sp.y, text: G.era.cover.kind === 'rock' ? 'CLONK!' : (G.era.cover.kind === 'shield' ? 'SHIELD!' : 'BLOCKED'), col: '#ffe9a0', size: 20, life: 0.9, layer: 'world' });
       sfx.clonk();
@@ -2124,28 +2406,31 @@
     G.shotLog.push(G.lastShot);
     return G.lastShot;
   }
+  var cover_hit_scr = null;
   function hitTest(x, y) {
-    var g = enemyGeom(), spots = coverSpots(), co = G.era.cover;
+    var g = enemyGeom(), co = G.era.cover, e = G.enemy;
+    cover_hit_scr = null;
     if (G.phase === 'enemyHide') return 'blocked';
-    // Solid covers (rocks/hay/barrels/halftone) block geometrically. Energy shields do not —
-    // they roll blockChance when a shot would otherwise hit.
-    if (co.kind !== 'shield') {
-      for (var i = 0; i < spots.length; i++) {
-        var cg = coverGeomAt(i);
-        if (y >= cg.top && y <= cg.base + 2 && x >= cg.x0 && x <= cg.x1) return 'blocked';
-      }
-    }
-    var cg0 = g.cover;
+    // Solid covers (rocks/hay/barrels/pillars) block geometrically, using the same damaged column shape that is drawn.
+    // Energy shields do not: they roll blockChance when a shot would otherwise hit.
+    var zc = e.z - 0.7, wx = (x - CX) * zc / FOC, wy = CAM_H - (y - Y0) * zc / FOC;
+    if (co.kind !== 'shield') { var ch = enemyCoverHit(wx, wy); if (ch) { cover_hit_scr = ch; return 'blocked'; } }
     var dx = x - g.head.x, dy = y - g.head.y;
-    var headHit = dx * dx + dy * dy <= Math.pow(g.head.r * 1.1, 2) && (co.kind === 'shield' || y < cg0.top);
-    var bodyHit = x >= g.body.x0 && x <= g.body.x1 && y >= g.body.y0 && y < g.body.y1 && (co.kind === 'shield' || y < cg0.top);
+    var headHit = dx * dx + dy * dy <= Math.pow(g.head.r * 1.1, 2);
+    var bodyHit = x >= g.body.x0 && x <= g.body.x1 && y >= g.body.y0 && y < g.body.y1;
     if (headHit || bodyHit) {
+      var zone = headHit ? 'head' : (y > g.body.y1 - (g.body.y1 - g.body.y0) * 0.4 ? 'legs' : 'body');
       // Moon shields: probabilistic block, then a free window so the next careful shot can land.
+      // A shield only blocks while it stands, he is behind it, and the struck part of it is not broken off.
       if (co.blockChance) {
-        if (G.shieldOpen) { G.shieldOpen = false; return headHit ? 'head' : 'body'; }
-        if (rnd() < co.blockChance) { G.shieldOpen = true; return 'blocked'; }
+        if (G.shieldOpen) { G.shieldOpen = false; return zone; }
+        var si = e.slot != null ? e.slot : nearestIdx(coverSpots(), e.baseWx), sx = coverSpots()[si], fr = clamp((wx - sx) / co.halfW, -0.99, 0.99);
+        var behind = Math.abs(e.wx - sx) < co.halfW, cols = coverCols('e', si);
+        if (behind && (!cols || colAt(cols, fr) > 0.01)) {
+          if (rnd() < co.blockChance) { G.shieldOpen = true; cover_hit_scr = { i: si, frac: fr }; return 'blocked'; }
+        }
       }
-      return headHit ? 'head' : 'body';
+      return zone;
     }
     return 'miss';
   }
@@ -2165,6 +2450,8 @@
     if (res === 'blocked' && G.era.cover.kind === 'shield') {
       addFx({ k: 'flash', x: x, y: y, size: 28, rot: rnd(), life: 0.2, layer: 'world' });
     }
+    G.scope = 0; G.scopeHold = 0; G.scopeTarget = 0;
+    camStart(0, { x: x, y: y });
     return resolvePlayerShot(res, null, null, { x: x, y: y });
   }
   function botFire(s) {
@@ -2194,15 +2481,17 @@
     var p = G.player, res = s.intent, pc = playerCoverGeom(), tx, ty;
     // Mid-run (finger-drag or slide anim) = exposed: a shot can still land even if you left the targeted cover.
     if ((res === 'hit' || res === 'head') && multiSlot() && s.target != null && playerRockIdx() !== s.target && !playerExposed()) res = 'moved';
-    else if ((res === 'hit' || res === 'head') && p.duck >= 0.6 && !playerExposed()) res = 'dodge';
+    else if ((res === 'hit' || res === 'head') && p.duck >= 0.6 && !playerExposed() && !(multiSlot() && coverDestroyed('p', playerRockIdx()))) res = 'dodge';
     if (G.ko) res = 'miss';
     if (res === 'hit' || res === 'head') {
       var dmg = Math.round(G.bot.dmg * (res === 'head' ? BALANCE.headMult : 1));
       G.hpP = Math.max(0, G.hpP - dmg); G.dmgB += dmg; G.roundGain.b += dmg; G.stats.botHits++;
       tx = PX + 10 * PS; ty = res === 'head' ? PY - 300 * PS : playerTorso().y;
-      p.flash = 1.2; p.hitT = 0.5; G.shake = 10;
-      addFx({ k: 'pow', x: tx, y: ty, size: 46 * PS, text: res === 'head' ? 'BONK!' : 'POW!', rot: rnd() * 6, life: 0.75, layer: 'near', col: '#ffd1e0' });
-      addFx({ k: 'txt', x: tx + 30, y: ty - 30, text: 'OUCH! -' + dmg, col: '#ff9aa8', size: 24, life: 1.0, layer: 'near' });
+      p.flash = 1.2; p.hitT = 0.5; G.shake = 10; G.flashY = 0.7;
+      knock(p, res === 'head' ? 'head' : 'body', PX < W / 2 ? -1 : 1);
+      addFx({ k: 'pow', x: tx, y: ty, size: 46 * PS, text: res === 'head' ? 'BONK!' : 'OOF!', rot: rnd() * 6, life: 0.75, layer: 'near', col: '#ffd1e0' });
+      addFx({ k: 'num', x: tx + 30, y: ty - 30, text: '-' + dmg, size: 28, vx: (rnd2() - 0.5) * 40, life: 1.1, layer: 'near' });
+      addFx({ k: 'txt', x: tx + 30, y: ty - 70, text: 'OUCH!', col: '#ff9aa8', size: 22, life: 1.0, layer: 'near' });
       sfx.ouch(); bump('hpBoxP');
       if (G.hpP <= 0) knockOut('player');
     } else if (res === 'moved') {
@@ -2210,6 +2499,7 @@
       tx = sp ? sp.x : W * pSlots()[s.target]; ty = sp ? sp.y : pc.base - pc.tall;
       G.nearStuck.push({ x: tx, y: ty, ang: -2.0, L: 150 * PS, w: 9 * PS, t: 0 });
       puff(tx, ty, 30 * PS, 'near');
+      if (multiSlot() && s.target != null) hitCover('p', s.target, rr2(-0.3, 0.3), tx, ty + 20 * PS, 110 * PS);
       addFx({ k: 'txt', x: tx, y: ty - 26, text: 'MISSED ME!', col: '#a8ffb8', size: 24, life: 1.0, layer: 'near' });
       sfx.thud();
     } else if (res === 'dodge') {
@@ -2217,6 +2507,7 @@
       tx = sp ? sp.x : pc.x - pc.w * 0.2; ty = pc.base - pc.tall + 14 * PS;
       if (G.era.shot.kind === 'arc') G.nearStuck.push({ x: tx, y: ty, ang: -2.2, L: 150 * PS, w: 9 * PS, t: 0 });
       addFx({ k: 'spark', x: tx, y: ty, size: 40 * PS, rot: rnd(), life: 0.45, layer: 'near' });
+      if (multiSlot()) hitCover('p', playerRockIdx(), rr2(-0.4, 0.4), tx, ty + 20 * PS, 110 * PS);
       addFx({ k: 'txt', x: tx + 20, y: ty - 20, text: 'DODGED!', col: '#a8ffb8', size: 26, life: 1.0, layer: 'near' });
       sfx.clonk();
     } else {
@@ -2237,6 +2528,7 @@
     var e = G.enemy, p = G.player, era = G.era;
     if (G.coverT < 1) { G.coverT = Math.min(1, G.coverT + dt / 0.4); G.coverH = G.coverFrom + (G.coverTo - G.coverFrom) * easeOut(G.coverT); }
     // enemy AI
+    if (e.kbT > 0) e.kbT = Math.max(0, e.kbT - dt); if (p.kbT > 0) p.kbT = Math.max(0, p.kbT - dt);
     e.flash = Math.max(0, e.flash - dt * 3.5); e.dizzy = Math.max(0, e.dizzy - dt); e.throwT = Math.max(0, (e.throwT || 0) - dt);
     if (e.hatOff > 0 && e.hitT <= 0) e.hatOff = 0;
     var ag = era.agility;
@@ -2249,10 +2541,16 @@
         e.duckTarget = running ? 0.1 : (G.pt >= e.peekAt && G.pt < e.peekAt + 0.5 ? 0.4 : 1);
       } else e.duckTarget = 1;
     }
+    else if (G.phase === 'aim' && G.coverT >= 1 && !G.freeze && e.dash) {
+      // Moving target: dashing between covers, fully up (exposed while crossing a gap)
+      e.duckTarget = 0;
+      if (Math.abs(e.wx - e.tx) < 0.02) { e.dash = false; e.actT = rr2(0.6, 1.2); }
+    }
     else if (G.phase === 'aim' && G.coverT >= 1 && !G.freeze) {
       if (e.duckT > 0) { e.duckT -= dt; if (e.duckT <= 0) e.duckTarget = 0; }
       e.actT -= dt;
-      if (e.actT <= 0) {
+      if (e.actT <= 0 && era.cover.spots && rnd2() < (BALANCE.dashChance[era.idx] || 0.4)) startDash();
+      else if (e.actT <= 0) {
         var r = rnd();
         if (r < 0.2 + 0.3 * ag) { var nt, tr = 0; do { nt = e.baseWx + rr(-1, 1) * (0.4 + 0.6 * ag); tr++; } while (Math.abs(nt - e.wx) < 0.3 && tr < 10); e.tx = nt; e.actT = rr(0.9, 1.6) * (1.4 - ag * 0.6); }
         else if (r < 0.32 + 0.46 * ag) { e.duckTarget = 1; e.duckT = rr(0.35, 0.55 + 0.2 * ag); e.actT = e.duckT + rr(0.5, 1.0); }
@@ -2264,7 +2562,7 @@
       if (e.actT <= 0) { e.tx = e.baseWx + rr(-0.7, 0.7); e.actT = rr(1.2, 2.2); }
     } else { e.duckTarget = 0; e.tx = approach(e.tx, e.baseWx, dt); }
     e.duck = approach(e.duck, e.duckTarget, dt * 6);
-    e.wx = approach(e.wx, e.tx, dt * (G.phase === 'enemyHide' && e.plan ? era.hideRun : 1.0 + 1.4 * ag));
+    e.wx = approach(e.wx, e.tx, dt * (e.dash && G.phase === 'aim' ? BALANCE.runSpeed[era.idx] : G.phase === 'enemyHide' && e.plan ? era.hideRun : 1.0 + 1.4 * ag));
     stepPlayerSlide(dt);
 
     // player duck / stamina
@@ -2290,7 +2588,7 @@
     G.shake = Math.max(0, G.shake - dt * 30);
     if (G.cool > 0) G.cool -= dt;
 
-    for (var i = G.fx.length - 1; i >= 0; i--) { G.fx[i].t += dt; if (G.fx[i].t >= G.fx[i].life) G.fx.splice(i, 1); }
+    for (var i = G.fx.length - 1; i >= 0; i--) { if (G.fx[i].layer === 'screen') continue; G.fx[i].t += dt; if (G.fx[i].t >= G.fx[i].life) G.fx.splice(i, 1); }
     for (var k = G.stuck.length - 1; k >= 0; k--) { G.stuck[k].t += dt; if (G.stuck[k].t > 2.5) G.stuck.splice(k, 1); }
     for (var m = G.nearStuck.length - 1; m >= 0; m--) { G.nearStuck[m].t += dt; if (G.nearStuck[m].t > 2.5) G.nearStuck.splice(m, 1); }
     if (G.proj.length) stepProj(dt);
@@ -2325,7 +2623,7 @@
         var tl = 0;
         for (var j = 0; j < G.botShots.length; j++) {
           var s = G.botShots[j];
-          if (!s.told && G.pt >= s.tellAt) { s.told = true; sfx.glint(); if (multiSlot()) s.target = playerRockIdx(); }
+          if (!s.told && G.pt >= s.tellAt) { s.told = true; sfx.glint(); if (multiSlot()) { s.target = playerRockIdx(); s.sweepFrom = s.target === 0 ? 2 : s.target === 2 ? 0 : (rnd2() < 0.5 ? 0 : 2); } }
           if (s.told && !s.fired) tl = Math.max(tl, 0.55 + 0.45 * Math.sin((G.pt - s.tellAt) * 14));
           if (!s.fired && G.pt >= s.fireAt) botFire(s);
         }
@@ -2376,6 +2674,11 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     var sh = G.shake;
     if (sh > 0) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
+    var cz = G.cam.z;
+    if (cz > 1.001) {
+      var vx = clamp(G.cam.fx, W / (2 * cz), W - W / (2 * cz)), vy = clamp(G.cam.fy, H / (2 * cz), H - H / (2 * cz));
+      ctx.translate(CX, H / 2); ctx.scale(cz, cz); ctx.translate(-vx, -vy);
+    }
     ctx.drawImage(bg, 0, 0, W, H);
     drawEnemyLayer(ctx, DPR);
     drawFx(ctx, 'world');
@@ -2384,13 +2687,19 @@
       for (var pi = 0; pi < pSlots().length; pi++) {
         var pg = playerCoverGeomAt(pi), pck = playerCoverKind();
         if (pck === 'halftone') { if (G.pcH > 1 || G.phase === 'aim' || G.phase === 'enemyHide') drawCover(ctx, pg.x, pg.base, pg.w, (G.phase === 'botFire' || G.phase === 'playerHide' || G.phase === 'swap' || G.phase === 'roundEnd') ? (G.pcH > 1 ? G.pcH : pg.low) : pg.tall * 0.85, DPR, true); }
-        else drawEraCover(ctx, pg.x, pg.base, 1, pg.w, pg.tall, pck);
+        else {
+          var pcols = coverCols('p', pi), pclip = pcols && coverClipBegin(ctx, pcols, pg.x, pg.base, pg.w, pg.tall);
+          if (!pcols || !coverGone(pcols)) drawEraCover(ctx, pg.x, pg.base, 1, pg.w, pg.tall, pck);
+          if (pclip) ctx.restore();
+          if (pcols) drawRubble(ctx, pcols, pg.x, pg.base, pg.w, pg.tall, pck);
+        }
       }
     } else if (playerCoverKind() === 'halftone') { if (G.pcH > 1) drawCover(ctx, pc.x, pc.base, pc.w, G.pcH, DPR, true); }
     else drawEraCover(ctx, pc.x, pc.base, 1, pc.w, pc.tall, playerCoverKind());
     drawPlayer(ctx);
     if (G.phase === 'botFire' && multiSlot()) {  // telegraphed aim: which rock each wound-up spear is headed for
-      for (var bi = 0; bi < G.botShots.length; bi++) { var b = G.botShots[bi]; if (b.told && !b.done && b.target != null) drawTargetMarker(ctx, b.target, b.fired ? 0.45 : 0.95); }
+      for (var bi = 0; bi < G.botShots.length; bi++) { var b = G.botShots[bi]; if (b.told && !b.done && b.target != null && (b.fired || aimPhaseOf(b) === 'lock')) drawTargetMarker(ctx, b.target, b.fired ? 0.45 : 0.95); }
+      drawAimLine(ctx);
     }
     drawNearSpears(ctx);
     drawFx(ctx, 'near');
@@ -2406,11 +2715,15 @@
       vg.addColorStop(0, 'rgba(255,40,70,0)'); vg.addColorStop(1, 'rgba(255,40,70,' + (0.3 * G.tell) + ')');
       ctx.fillStyle = vg; ctx.fillRect(-20, -20, W + 40, H + 40);
     }
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (G.flashY > 0) { ctx.fillStyle = 'rgba(255,226,70,' + (0.38 * G.flashY).toFixed(3) + ')'; ctx.fillRect(0, 0, W, H); }
+    if (G.cam.on && (G.cam.mode === 'slow' || G.cam.mode === 'hold')) drawSlowMoBars(ctx);
+    drawCallouts(ctx);
   }
   var lastT = 0;
   function loop(now) {
     var dt = lastT ? Math.min(0.05, (now - lastT) / 1000) : 0.016; lastT = now;
-    if (!G.paused) update(dt * G.ts);
+    if (!G.paused) { var ck = camScale(); update(dt * G.ts * ck); camUpdate(dt); }
     updHud(dt * G.ts);
     render();
     requestAnimationFrame(loop);
@@ -2452,6 +2765,7 @@
   // HUD / DUCK are separate DOM nodes (duck has pointer-events); canvas drags never start on them.
   cv.addEventListener('pointerdown', function (ev) {
     audio(); ev.preventDefault();
+    if (G.cam.on && G.cam.mode !== 'out') { camSkip(); return; }  // tap-to-skip the slow-mo shot cam
     if (G.phase === 'aim') {
       if (G.pointerId !== null || !canShoot()) return;
       G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
@@ -2647,7 +2961,25 @@
     else if (act === 'locked') shopMsg('Buy the upgrades in order.');
     renderShop();
   }
-  var endAnim = null;
+  var endAnim = null, coinAnim = null;
+  // Win pose for the end screen: a cheering kid in this era's outfit (inline SVG, no assets).
+  function winPoseSVG(era) {
+    var look = outfitOf(era).look || {}, tun = look.tunic || '#6a5ad0', dark = look.spot || '#3a2a90';
+    var skin = era.player.outfit === 'space' ? '#d0d8e8' : era.player.outfit === 'modern' ? '#d4a07a' : '#f0b088';
+    var tip = weaponOf(era).tip || '#ccc';
+    var av = (AVATARS[era.player.outfit] || AVATARS.modern).replace('<svg ', '<svg x="38" y="8" width="44" height="44" ');
+    var rays = ''; for (var i = 0; i < 12; i++) { var a = i * Math.PI / 6, b = a + 0.16; rays += 'M60 34L' + (60 + Math.cos(a) * 62).toFixed(1) + ' ' + (34 + Math.sin(a) * 62).toFixed(1) + 'L' + (60 + Math.cos(b) * 62).toFixed(1) + ' ' + (34 + Math.sin(b) * 62).toFixed(1) + 'Z'; }
+    return '<svg viewBox="0 0 120 130"><defs><clipPath id="winHeadClip"><circle cx="60" cy="30" r="21"/></clipPath></defs>' +
+      '<path class="burst" d="' + rays + '" fill="rgba(255,210,63,.22)"/>' +
+      '<ellipse cx="60" cy="125" rx="30" ry="5" fill="rgba(0,0,0,.35)"/>' +
+      '<path d="M52 94L46 122M68 94L74 122" stroke="' + dark + '" stroke-width="11" stroke-linecap="round"/>' +
+      '<g class="arms"><path d="M46 62L26 24M74 62L94 24" stroke="' + skin + '" stroke-width="10" stroke-linecap="round"/>' +
+      '<path d="M94 24L104 -4" stroke="#8a5a3a" stroke-width="5" stroke-linecap="round"/><path d="M100 -6l8 2-1-12z" fill="' + tip + '"/>' +
+      '<circle cx="26" cy="24" r="6" fill="' + skin + '"/><circle cx="94" cy="24" r="6" fill="' + skin + '"/></g>' +
+      '<rect x="42" y="50" width="36" height="48" rx="14" fill="' + tun + '"/><path d="M44 80h32" stroke="' + dark + '" stroke-width="5"/>' +
+      '<g clip-path="url(#winHeadClip)">' + av + '</g><circle cx="60" cy="30" r="21" fill="none" stroke="#fff" stroke-width="3"/>' +
+      '<path d="M12 70l4 4M18 60l-3 5M104 64l5-3M108 78l-5 2" stroke="#ffd23f" stroke-width="3" stroke-linecap="round"/></svg>';
+  }
   function showEnd(rw) {
     var r = G.result, t = $('oTitle'), bot = G.era.bot.name;
     t.textContent = r === 'win' ? 'YOU WIN!' : r === 'lose' ? 'YOU LOSE' : 'DRAW!';
@@ -2679,6 +3011,17 @@
       el.textContent = fmt(Math.round(rw.from + (rw.to - rw.from) * easeOut(u)));
       if (u >= 1) { clearInterval(endAnim); endAnim = null; }
     }, 30);
+    // coin count-up to exactly what this match awarded (display only: the save was already written once)
+    var awarded = (rw.coins || 0) + (rw.coinBonus || 0), cn = $('oCoinN'), cb = $('oCoinBig'), ct0 = performance.now() + 350, lastTick = 0, lastVal = 0;
+    if (coinAnim) clearInterval(coinAnim);
+    cn.textContent = '0'; cb.classList.remove('done');
+    coinAnim = setInterval(function () {
+      var now = performance.now(), u = clamp((now - ct0) / 1000, 0, 1), v = Math.round(awarded * easeOut(u));
+      if (v !== lastVal) { cn.textContent = String(v); lastVal = v; if (now - lastTick > 55) { lastTick = now; sfx.tick(); } }
+      if (u >= 1) { clearInterval(coinAnim); coinAnim = null; cn.textContent = String(awarded); void cb.offsetWidth; cb.classList.add('done'); sfx.coin(); }
+    }, 30);
+    var wp = $('oWin');
+    if (r === 'win') { wp.innerHTML = winPoseSVG(G.era); wp.classList.add('show'); } else { wp.innerHTML = ''; wp.classList.remove('show'); }
     $('over').classList.add('show');
   }
   $('playBtn').addEventListener('click', function () { audio(); showEraMap(); });
@@ -2712,7 +3055,22 @@
     start: function (eraId) { return startMatch(ERA_BY_ID[eraId || 'stone']); },
     devStart: function (eraId) { var e = ERA_BY_ID[eraId]; setEra(e); var b = e.built; e.built = true; var u = SAVE.unlocked; SAVE.unlocked = 4; startMatch(e); e.built = b; SAVE.unlocked = u; },
     pause: function (b) { G.paused = b !== false; },
-    step: function (sec, fps, noRender) { var d = 1 / (fps || 60), n = Math.round(sec / d); for (var i = 0; i < n; i++) { update(d); if (!noRender) updHud(d); } if (!noRender) render(); },
+    step: function (sec, fps, noRender) { var d = 1 / (fps || 60), n = Math.round(sec / d); for (var i = 0; i < n; i++) { update(d); camUpdate(d); if (!noRender) updHud(d); } if (!noRender) render(); },
+    // frame(): like step() but with the real loop's slow-mo time scaling (sec = real seconds)
+    frame: function (sec) { var d = 1 / 60, n = Math.round(sec / d), sim = 0; for (var i = 0; i < n; i++) { var k = camScale() * G.ts; update(d * k); sim += d * k; camUpdate(d); updHud(d); } render(); return sim; },
+    cam: function () { var c = G.cam; return { on: c.on, mode: c.mode, z: c.z, k: camScale(), starts: G.camStarts, skips: G.camSkips }; },
+    camSkip: function () { return camSkip(); },
+    coverHP: function () { if (!G.covers) return null; return { enemy: [0, 1, 2].map(function (i) { return coverHpPct('e', i); }), player: [0, 1, 2].map(function (i) { return coverHpPct('p', i); }) }; },
+    coverCols: function (side, i) { var a = coverCols(side, i); return a ? a.slice() : null; },
+    breakCover: function (side, i) { var a = coverCols(side, i); if (a) for (var k = 0; k < a.length; k++) a[k] = 0; },
+    hitCover: function (side, i, frac) { return damageCover(side, i, frac || 0, 1); },
+    coverBlocks: function (wx, wy) { var h = enemyCoverHit(wx, wy); return h ? h.i : -1; },
+    aimLine: function () { var a = aimLineInfo(); return a ? { phase: a.phase, x: a.x, y: a.y, target: a.target, u: a.u } : null; },
+    callouts: function () { return G.calloutLog.slice(); },
+    enemyKnock: function () { return { k: G.enemy.kbK || null, t: G.enemy.kbT || 0 }; },
+    playerKnock: function () { return { k: G.player.kbK || null, t: G.player.kbT || 0 }; },
+    dashing: function () { return !!G.enemy.dash; },
+    coinShown: function () { return $('oCoinN').textContent; },
     timeScale: function (k) { G.ts = k; },
     force: function (ph) {
       if (G.phase === 'menu' || G.phase === 'over') startMatch(G.era.built ? G.era : ERAS[0]);
@@ -2726,10 +3084,10 @@
     throwAt: function (x, y) { return playerThrow(x, y); },
     fireAt: function (x, y) { return playerFire(x, y); },
     solveAim: function (part) {
-      var e = G.enemy, T = part === 'head' ? { x: e.wx, y: 1.45 - e.duck * 1.25, z: e.z } : { x: e.wx, y: Math.max(G.coverH + 0.15, 1.0) - e.duck * 1.25, z: e.z };
+      var e = G.enemy, T = part === 'head' ? { x: e.wx, y: 1.45 - e.duck * 1.25, z: e.z } : part === 'legs' ? { x: e.wx, y: 0.25 - e.duck * 1.25, z: e.z } : { x: e.wx, y: Math.max(G.coverH + 0.15, 1.0) - e.duck * 1.25, z: e.z };
       return solveAim(T);
     },
-    enemyScreen: function (part) { var g = enemyGeom(); return part === 'head' ? { x: g.head.x, y: g.head.y } : { x: g.x, y: (g.body.y0 + g.ridgeTop) / 2 }; },
+    enemyScreen: function (part) { var g = enemyGeom(); return part === 'head' ? { x: g.head.x, y: g.head.y } : part === 'legs' ? { x: g.x, y: g.body.y1 - (g.body.y1 - g.body.y0) * 0.15 } : { x: g.x, y: (g.body.y0 + g.ridgeTop) / 2 }; },
     enemy: function () { var g = enemyGeom(); return { head: g.head, body: g.body, ridgeTop: g.ridgeTop, cover: { x0: g.cover.x0, x1: g.cover.x1, base: g.cover.base, top: g.cover.top }, wx: G.enemy.wx, z: G.enemy.z, duck: G.enemy.duck }; },
     freezeEnemy: function (b) { G.freeze = b !== false; },
     setDuck: function (b) { G.keyDuck = !!b; },

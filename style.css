@@ -191,3 +191,18 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:none}
 @media (max-height:760px){ .rules{font-size:13px;line-height:1.45} .howto{font-size:14px;margin-top:10px} .logo{font-size:44px} .tro{margin-top:8px;padding:8px 10px} .big{padding:12px;margin-top:12px} .endTitle{font-size:38px} }
 
 /* finger-slide movement: no LEFT/RIGHT buttons */
+
+/* victory: win pose + coin count-up (no ads, no x2) */
+.winPose{display:none;height:96px;margin:-4px auto 2px;width:120px}
+.winPose.show{display:block}
+.winPose svg{width:100%;height:100%;overflow:visible;animation:winHop .5s ease-in-out infinite alternate;transform-origin:50% 100%}
+.winPose .arms{animation:winWave .35s ease-in-out infinite alternate;transform-origin:60px 60px}
+.winPose .burst{animation:winSpin 4s linear infinite;transform-origin:60px 34px}
+@keyframes winHop{0%{transform:translateY(4px) scaleY(.96)}100%{transform:translateY(-6px) scaleY(1.02)}}
+@keyframes winWave{0%{transform:rotate(-4deg)}100%{transform:rotate(4deg)}}
+@keyframes winSpin{to{transform:rotate(360deg)}}
+.coinBig{margin:8px auto 0;width:max-content;padding:4px 16px;border-radius:999px;background:rgba(0,0,0,.32);font-size:26px;font-weight:900;color:#ffd23f;letter-spacing:.02em;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.coinBig b{display:inline-block;min-width:1.6em;text-align:left}
+.coinBig .coinIc{display:inline-block}
+.coinBig.done{animation:bump .4s}
+.coinBig.done .coinIc{animation:winSpin .5s ease-out}

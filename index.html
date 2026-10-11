@@ -10,10 +10,10 @@
 <meta name="application-name" content="Time Toss" />
 <meta name="theme-color" content="#3a2270" />
 <title>Time Toss: duel your way through history</title>
-<link rel="icon" href="icon.svg?v=15" type="image/svg+xml" />
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=15" />
-<link rel="manifest" href="manifest.webmanifest?v=15" />
-<link rel="stylesheet" href="style.css?v=15" />
+<link rel="icon" href="icon.svg?v=16" type="image/svg+xml" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=16" />
+<link rel="manifest" href="manifest.webmanifest?v=16" />
+<link rel="stylesheet" href="style.css?v=16" />
 </head>
 <body>
 <div id="app">
@@ -79,6 +79,7 @@
   <!-- End screen -->
   <div id="over" class="overlay">
     <div class="panel endPanel">
+      <div id="oWin" class="winPose" aria-hidden="true"></div>
       <div id="oStreak" class="streak"></div>
       <h2 id="oTitle" class="endTitle">YOU WIN!</h2>
       <p id="oSub" class="sub"></p>
@@ -88,6 +89,7 @@
         <div class="fin"><small id="oBn">UGGA BUNGA</small><b id="oB">0</b><em id="oHpB"></em></div>
       </div>
       <p id="oStats" class="stats"></p>
+      <div id="oCoinBig" class="coinBig"><span class="coinIc">🪙</span> +<b id="oCoinN">0</b></div>
       <div class="tro">
         <div class="troTop"><b class="troN">🏆 <span id="oTro">0</span></b><span id="oDelta" class="delta"></span></div>
         <div class="tbar"><i id="oBar"></i></div>
@@ -111,6 +113,6 @@
     </div>
   </div>
 </div>
-<script src="game.js?v=15"></script>
+<script src="game.js?v=16"></script>
 </body>
 </html>
