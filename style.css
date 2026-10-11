@@ -206,3 +206,14 @@ button{font-family:inherit;color:inherit;cursor:pointer;touch-action:none}
 .coinBig .coinIc{display:inline-block}
 .coinBig.done{animation:bump .4s}
 .coinBig.done .coinIc{animation:winSpin .5s ease-out}
+/* weapon upgrades (v20) */
+.upHead{display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:rgba(255,255,255,.07);text-align:left}
+.upHead .itext b{font-size:16px}
+.stars{color:#ffd23f;letter-spacing:2px;font-size:15px}.stars i{color:rgba(255,255,255,.22);font-style:normal}
+.upStats{display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.22);font-size:13px;text-align:left;align-items:center}
+.upStats span{color:#d8c8f0;font-weight:700}.upStats b{font-weight:900}.upStats em{font-style:normal;color:#8af0a0;font-weight:900;text-align:right}
+.item.tier .itext small{font-size:11.5px}
+.item.tier.have{border-color:#4fdc6a;opacity:.85}
+.item.tier.next{border-color:#ffd23f}
+.tbadge{width:40px;height:40px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;color:#3a2208}
+.upNote{margin:8px 2px 0;font-size:11.5px;color:#c8b6e6;text-align:left}

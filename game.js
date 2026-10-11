@@ -73,6 +73,19 @@
       modern: [{ id: 'rifle0', name: 'Scout Rifle', dmg: 30, cost: 0, tip: '#3b3345', note: 'Hold to zoom' }, { id: 'scope', name: 'Pro Scope', dmg: 36, cost: 900, tip: '#2a2230', steady: 0.3, note: '+damage, steadier zoom' }, { id: 'marksman', name: 'Marksman Rifle', dmg: 44, cost: 1600, tip: '#1a1520', note: 'Hard-hitting' }],
       space: [{ id: 'blaster0', name: 'Ray Blaster', dmg: 34, cost: 0, tip: '#39e0ff', note: 'Instant beam' }, { id: 'plasma', name: 'Plasma Blaster', dmg: 42, cost: 1400, tip: '#7af0ff', note: '+damage' }, { id: 'nova', name: 'Nova Cannon', dmg: 50, cost: 2400, tip: '#ff9aef', reload: 0.8, note: '+damage, faster fire' }]
     },
+    // Weapon UPGRADES (v20): one tier ladder per era, bought in order with pretend coins, applied on top of whichever
+    // weapon is equipped. cost[t] buys tier t (tier 0 is free). Per tier: dmg = extra damage share; steady = share of
+    // scope sway / quick-shot scatter removed (thrown eras: longer aim guide); zoom = extra scope magnification
+    // (Desert / Moon); speed = extra throw speed (Stone / Castle / West: flatter, faster, harder to dodge).
+    // Coins per win = coins.win (+ streak bonus), so ~3 wins buys tier 1.
+    upgrades: {
+      cost: [0, 150, 400, 900],
+      dmg: [0, 0.10, 0.20, 0.35],
+      steady: [0, 0.30, 0.55, 0.75],
+      zoom: [0, 0.3, 0.6, 0.9],
+      speed: [0, 0.06, 0.12, 0.18],
+      names: ['Stock', 'Tuned', 'Pro', 'Legend']
+    },
     // Outfits per era: hp = extra max health, dmgBonus = extra damage share.
     outfits: {
       stone: [
@@ -195,7 +208,8 @@
   var WEAPON_IDS = allIds('weapons'), OUTFIT_IDS = allIds('outfits');
   function defaultSave() {
     var s = { v: 2, trophies: 0, unlocked: 0, coins: 0, owned: { weapons: [], outfits: [] }, equip: { weapons: {}, outfits: {} },
-      stats: { matches: 0, wins: 0, losses: 0, draws: 0 }, streak: 0, bestStreak: 0, muted: false, last: 'stone' };
+      stats: { matches: 0, wins: 0, losses: 0, draws: 0 }, streak: 0, bestStreak: 0, muted: false, last: 'stone', upg: {} };
+    ERAS.forEach(function (e) { s.upg[e.id] = 0; });
     ['weapons', 'outfits'].forEach(function (k) {
       Object.keys(BALANCE[k]).forEach(function (era) {
         BALANCE[k][era].forEach(function (it) { if (it.cost === 0) s.owned[k].push(it.id); });
@@ -223,6 +237,9 @@
     d.streak = num(o.streak, 0, 1e6, 0); d.bestStreak = Math.max(d.streak, num(o.bestStreak, 0, 1e6, 0));
     d.muted = o.muted === true;
     d.last = ERA_BY_ID[o.last] ? o.last : 'stone';
+    // v20 weapon upgrades: older saves have no upg field, so every era starts at tier 0 (nothing else changes).
+    var maxT = BALANCE.upgrades.cost.length - 1;
+    if (o.upg && typeof o.upg === 'object') Object.keys(d.upg).forEach(function (era) { d.upg[era] = num(o.upg[era], 0, maxT, 0); });
     return d;
   }
   function loadSave() {
@@ -290,17 +307,28 @@
   // ---------- gear lookups ----------
   function weaponOf(era) { var id = SAVE.equip.weapons[era.id]; return BALANCE.weapons[era.id].filter(function (w) { return w.id === id; })[0] || BALANCE.weapons[era.id][0]; }
   function outfitOf(era) { var id = SAVE.equip.outfits[era.id]; return BALANCE.outfits[era.id].filter(function (w) { return w.id === id; })[0] || BALANCE.outfits[era.id][0]; }
-  function playerDamage(head) { var w = weaponOf(G.era), o = outfitOf(G.era); return Math.round(w.dmg * (1 + (o.dmgBonus || 0)) * (head ? BALANCE.headMult : 1)); }
+  // Upgrade tier per era. ?admin=1 gets max tiers for the session only (never written to the save).
+  function maxTier() { return BALANCE.upgrades.cost.length - 1; }
+  function upgTier(era) { if (ADMIN) return maxTier(); return clamp((SAVE.upg && SAVE.upg[era.id]) || 0, 0, maxTier()); }
+  function upgFx(era, t) {
+    var U = BALANCE.upgrades; t = t == null ? upgTier(era) : t;
+    return { tier: t, dmg: U.dmg[t], steady: U.steady[t], zoom: era.shot.kind === 'hitscan' ? U.zoom[t] : 0, speed: era.shot.kind === 'arc' ? U.speed[t] : 0 };
+  }
+  function weaponDmg(era) { return weaponOf(era).dmg * (1 + upgFx(era).dmg); }
+  function steadyOf() { var w = weaponOf(G.era).steady || 0, u = upgFx(G.era).steady; return 1 - (1 - (G.era.shot.kind === 'hitscan' ? w : 0)) * (1 - u); }
+  function shotSpeed() { return G.era.shot.speed * (1 + upgFx(G.era).speed); }
+  function scopeZoom() { return (G.era.shot.zoom || 1) + upgFx(G.era).zoom; }
+  function playerDamage(head) { var o = outfitOf(G.era); return Math.round(weaponDmg(G.era) * (1 + (o.dmgBonus || 0)) * (head ? BALANCE.headMult : 1)); }
   function zoneMult(z) { return z === 'head' ? BALANCE.headMult : z === 'legs' ? BALANCE.legMult : 1; }
   function isHitRes(r) { return r === 'head' || r === 'body' || r === 'legs'; }
-  function playerDamageZone(z) { var w = weaponOf(G.era), o = outfitOf(G.era); return Math.round(w.dmg * (1 + (o.dmgBonus || 0)) * zoneMult(z)); }
+  function playerDamageZone(z) { var o = outfitOf(G.era); return Math.round(weaponDmg(G.era) * (1 + (o.dmgBonus || 0)) * zoneMult(z)); }
   function playerMaxHp() { return BALANCE.player.baseHealth + (outfitOf(G.era).hp || 0); }
   function botStats(era, trophies) {
     var b = BALANCE.bot, i = era.idx;
     return { hp: Math.round(b.baseHealth[i] + trophies * b.healthPerTrophy), dmg: Math.round(b.baseDamage[i] + trophies * b.damagePerTrophy),
       acc: Math.min(b.accMax, b.baseAcc[i] + trophies * b.accPerTrophy), head: b.headShare };
   }
-  function guideLen() { return G.era.shot.guide + (weaponOf(G.era).steady || 0); }
+  function guideLen() { return G.era.shot.guide + (weaponOf(G.era).steady || 0) + 0.25 * upgFx(G.era).steady; }
   function coolTime() { return (G.era.shot.cool || 0.5) * (weaponOf(G.era).reload || 1); }
 
   // ---------- layout ----------
@@ -1490,12 +1518,30 @@
       line(c, 33, sh + 40 + kick, 74, sh - 166 + kick, 3, P.wood2);
       line(c, 66, sh - 140 + kick, 69, sh - 154 + kick, 11, P.fur);
       c.fillStyle = white ? '#fff' : tip; c.beginPath(); c.moveTo(66, sh - 166 + kick); c.lineTo(80, sh - 166 + kick); c.lineTo(78, sh - 196 + kick); c.closePath(); c.fill();
+      TIPAT = { x: 76, y: sh - 182 + kick, kind: 'tip' };
     }
     line(c, 48, sh + 6, 72, sh - 36 + kick * 0.5, 24, P.skin); line(c, 72, sh - 36 + kick * 0.5, 56, sh - 78 + kick, 20, P.skin);
     c.fillStyle = P.skin; c.beginPath(); c.arc(57, sh - 80 + kick, 11, 0, 7); c.fill();
   }
+  // Weapon upgrade look: each draw function reports where its weapon tip / scope is (local units) in TIPAT;
+  // tiers add a bronze / silver / gold glint there (spear & arrow tips), a band (musket) or a scope ring (rifle / blaster).
+  var TIPAT = null, TIER_COL = ['', '#e0a060', '#e8f0ff', '#ffd84a'];
+  function drawUpgradeLook(c, t) {
+    var q = TIPAT; if (!q || t < 1) return;
+    var col = TIER_COL[t] || '#ffd84a', tw = 0.6 + 0.4 * Math.abs(Math.sin(G.time * 3 + t));
+    c.save();
+    if (q.kind === 'ring') { c.strokeStyle = col; c.lineWidth = 3 + t; c.globalAlpha = 0.95; c.beginPath(); c.arc(q.x, q.y, q.r, 0, 7); c.stroke(); }
+    else if (q.kind === 'band') { c.save(); c.translate(q.x, q.y); c.rotate(q.ang + Math.PI / 2); c.fillStyle = col; c.fillRect(-7, -3 - t, 14, 6 + t * 2); c.restore(); }
+    else { c.fillStyle = col; c.globalAlpha = 0.5 + 0.5 * tw; c.beginPath(); c.arc(q.x, q.y, 5 + t * 1.5, 0, 7); c.fill(); }
+    // twinkle star
+    var sx = q.x + 10, sy = q.y - 10, r = (6 + 3 * t) * tw;
+    c.globalAlpha = 0.9; c.fillStyle = '#fff'; c.beginPath();
+    c.moveTo(sx, sy - r); c.lineTo(sx + r * 0.25, sy - r * 0.25); c.lineTo(sx + r, sy); c.lineTo(sx + r * 0.25, sy + r * 0.25); c.lineTo(sx, sy + r); c.lineTo(sx - r * 0.25, sy + r * 0.25); c.lineTo(sx - r, sy); c.lineTo(sx - r * 0.25, sy - r * 0.25); c.closePath(); c.fill();
+    c.restore();
+  }
   function drawPlayer(c) {
     var p = G.player, outfit = G.era.player.outfit, look = outfitOf(G.era).look || {};
+    TIPAT = null;
     c.save(); c.translate(PX, PY); c.scale(PS, PS);
     applyKnock(c, p, 260);
     var shake = p.hitT > 0 ? Math.sin(G.time * 60) * 4 * p.hitT : 0;
@@ -1523,6 +1569,7 @@
       drawPlayerModern(c, PM, p.duck, p.recoil);
       if (p.flash > 0) { c.globalAlpha = Math.min(0.85, p.flash); drawPlayerModern(c, PAL_PW, p.duck, p.recoil); c.globalAlpha = 1; }
     }
+    drawUpgradeLook(c, upgTier(G.era));
     c.restore();
   }
   // ---------- player rocks + sliding ----------
@@ -1530,7 +1577,7 @@
   // (widest pose, incl. bow / weapon) and the outer covers stay fully on screen at any width.
   var slotCache = { key: '', v: null }, bodyExt = {};
   function playerBodyExt() {
-    var key = G.era.id + '|' + outfitOf(G.era).id;
+    var key = G.era.id + '|' + outfitOf(G.era).id + '|' + upgTier(G.era);
     if (bodyExt[key]) return bodyExt[key];
     var ext = { l: 80, r: 135 };
     bodyExt[key] = ext;  // guard against re-entry while measuring
@@ -1554,7 +1601,7 @@
   function pSlots() {
     var base = G.era.playerSpots || [0.2];
     if (base.length < 2) return base;
-    var key = W + '|' + PS + '|' + G.era.id + '|' + outfitOf(G.era).id;
+    var key = W + '|' + PS + '|' + G.era.id + '|' + outfitOf(G.era).id + '|' + upgTier(G.era);
     if (slotCache.key === key) return slotCache.v;
     var ext = playerBodyExt(), m = BALANCE.move.edgeMargin, kind = playerCoverKind();
     var halfC = (kind === 'haystack' ? 95 : 98) * PS;  // cover half-width (drawn at slot x + 10*PS)
@@ -1673,6 +1720,7 @@
     if (armed) {
       line(c, 40, sh + 10 + kick, 70, sh - 150 + kick, 5, white ? '#fff' : '#a0663a');
       c.fillStyle = white ? '#fff' : tip; c.beginPath(); c.moveTo(68, sh - 148 + kick); c.lineTo(78, sh - 148 + kick); c.lineTo(74, sh - 172 + kick); c.closePath(); c.fill();
+      TIPAT = { x: 73, y: sh - 158 + kick, kind: 'tip', bow: { x: 58, y: sh - 40 + bk } };
       c.strokeStyle = white ? '#fff' : '#e8434a'; c.lineWidth = 3;
       c.beginPath(); c.moveTo(42, sh + 6 + kick); c.lineTo(36, sh + 18 + kick); c.moveTo(42, sh + 6 + kick); c.lineTo(48, sh + 18 + kick); c.stroke();
     }
@@ -1709,6 +1757,7 @@
     line(c, 42, sh - 30 + mk, 50, sh - 100 + mk, 7, white ? '#fff' : '#3b3345');
     line(c, 50, sh - 100 + mk, 54, sh - 130 + mk, 4, white ? '#fff' : '#2a2230');
     c.fillStyle = white ? '#fff' : '#888'; c.beginPath(); c.arc(51, sh - 108 + mk, 3, 0, 7); c.fill();
+    TIPAT = { x: 47, y: sh - 70 + mk, kind: 'band', ang: Math.atan2(-70, 8) };
     if (rec > 0.3) { c.fillStyle = 'rgba(220,200,160,.45)'; c.beginPath(); c.arc(56, sh - 136 + mk, 10 + rec * 8, 0, 7); c.fill(); }
     line(c, 48, sh + 4, 70, sh + 18, 22, white ? '#fff' : '#d8c0a0'); line(c, 70, sh + 18, 44, sh - 8 + kick, 16, skin);
   }
@@ -1740,6 +1789,7 @@
     line(c, 48, sh - 20 + bk2, 56, sh - 70 + bk2, 12, white ? '#fff' : '#39e0ff');
     c.fillStyle = white ? '#fff' : '#ff9aef'; c.beginPath(); c.arc(58, sh - 76 + bk2, 8, 0, 7); c.fill();
     c.fillStyle = white ? '#fff' : '#fff'; c.beginPath(); c.arc(58, sh - 76 + bk2, 3, 0, 7); c.fill();
+    TIPAT = { x: 58, y: sh - 76 + bk2, kind: 'ring', r: 11 };
     line(c, 50, sh + 4, 68, sh + 16, 22, suit); line(c, 68, sh + 16, 46, sh - 6 + kick, 16, suit);
   }
 
@@ -1795,6 +1845,7 @@
     line(c, 47, sh - 74 + kick, 53, sh - 142 + kick, 5, P.gun);
     line(c, 33, sh - 26 + kick, 39, sh - 76 + kick, 12, P.scope);
     c.fillStyle = P.lens; c.beginPath(); c.arc(39, sh - 77 + kick, 5, 0, 7); c.fill();
+    TIPAT = { x: 39, y: sh - 77 + kick, kind: 'ring', r: 9 };
     line(c, 36, sh - 40 + kick, 44, sh - 40 + kick, 4, P.gun); line(c, 38, sh - 62 + kick, 46, sh - 62 + kick, 4, P.gun);
     // right arm (trigger)
     line(c, 50, sh + 6, 72, sh + 22, 24, uni); line(c, 72, sh + 22, 40, sh - 4 + kick, 18, P.skin);
@@ -2108,13 +2159,16 @@
   }
 
   // ---------- scope ----------
+  // Full-screen first-person scope (Desert Ops / Moon Base). G.scope 0..1 blends from the normal view into a zoomed
+  // view centred on the aim: screen point p maps to C + (p - A) * z, where A = aim + sway and C = lens centre.
   function scopeInfo() {
-    var a = easeOut(G.scope);
-    var R = Math.min(W * 0.46, H * 0.28) * (0.55 + 0.45 * a);
-    var z = 1 + (G.era.shot.zoom - 1) * a;
-    var sw = swayOffset();
-    return { a: a, R: R, z: z, cx: CX, cy: H * 0.4, ax: G.aim.x + sw.x * a, ay: G.aim.y + sw.y * a };
+    var a = easeOut(G.scope), z = 1 + (scopeZoom() - 1) * a, sw = swayOffset();
+    var ax = G.aim.x + sw.x * a, ay = G.aim.y + sw.y * a, Cx = CX, Cy = H * 0.44;
+    var cx = ax + (Cx - ax) * a, cy = ay + (Cy - ay) * a;  // lens centre glides from the aim point to screen centre
+    var Rf = W * 0.56 + H * 0.08, R0 = Math.max(W, H) * 1.1, R = R0 + (Rf - R0) * a;  // lens closes in from beyond the screen edge
+    return { a: a, z: z, cx: cx, cy: cy, ax: ax, ay: ay, R: R };
   }
+  function scopeOn() { return G.era.shot.kind === 'hitscan' && G.scope > 0.02; }
   // Faint "where your aim is heading" ring at the finger target (aim phase only, while pulling).
   function drawAimMarker(c, x, y, a) {
     if (!(a > 0.05)) return;
@@ -2124,43 +2178,52 @@
     c.globalAlpha = 0.7 * a; c.fillStyle = '#fff'; c.beginPath(); c.arc(x, y, 3.2, 0, 7); c.fill();
     c.restore(); G.markerOn = true; G.markerAt = { x: x, y: y };
   }
-  function swayOffset() { var t = G.time; return { x: Math.sin(t * 1.1) * 1.6 + Math.sin(t * 2.7) * 0.6, y: Math.cos(t * 1.4) * 1.3 }; }
+  // Scope sway (screen px before zoom); Steady Aim upgrades / steadier rifles shrink it.
+  function swayOffset() { var t = G.time, k = 1 - steadyOf(); return { x: (Math.sin(t * 1.1) * 3.2 + Math.sin(t * 2.7) * 1.2) * k, y: (Math.cos(t * 1.4) * 2.6 + Math.sin(t * 2.1) * 0.8) * k }; }
   function toScreen(x, y) {
     if (G.scope < 0.05) return { x: x, y: y };
     var s = scopeInfo();
     return { x: s.cx + (x - s.ax) * s.z, y: s.cy + (y - s.ay) * s.z };
   }
   function drawScope(c) {
-    if (G.scope < 0.02) return;
+    if (!scopeOn()) return;
     var s = scopeInfo();
+    G.scopeView = { on: s.a > 0.95, a: s.a, z: s.z };
     c.save();
-    c.fillStyle = 'rgba(14,7,28,' + (0.86 * s.a) + ')';
-    c.beginPath(); c.rect(-20, -20, W + 40, H + 40); c.arc(s.cx, s.cy, s.R, 0, 7, true); c.fill();
-    c.beginPath(); c.arc(s.cx, s.cy, s.R, 0, 7); c.clip();
+    c.globalAlpha = Math.min(1, s.a * 1.6);
+    // the zoomed world fills the whole screen (first person: you are not drawn)
+    c.fillStyle = '#120a1e'; c.fillRect(-20, -20, W + 40, H + 40);
     c.save();
     c.translate(s.cx, s.cy); c.scale(s.z, s.z); c.translate(-s.ax, -s.ay);
-    drawWorld(c);
+    drawWorld(c);  // vector scene, crisp at any zoom
     drawEnemyLayer(c, DPR * s.z);
     drawFx(c, 'world');
     c.restore();
-    // lens tint + vignette
-    var vg = c.createRadialGradient(s.cx, s.cy, s.R * 0.55, s.cx, s.cy, s.R);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,5,25,.55)');
-    c.fillStyle = vg; c.fillRect(s.cx - s.R, s.cy - s.R, s.R * 2, s.R * 2);
-    // reticle
-    c.strokeStyle = 'rgba(20,10,30,.9)'; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(s.cx - s.R, s.cy); c.lineTo(s.cx - 10, s.cy); c.moveTo(s.cx + 10, s.cy); c.lineTo(s.cx + s.R, s.cy);
-    c.moveTo(s.cx, s.cy - s.R); c.lineTo(s.cx, s.cy - 10); c.moveTo(s.cx, s.cy + 10); c.lineTo(s.cx, s.cy + s.R); c.stroke();
-    c.lineWidth = 5;
-    c.beginPath(); c.moveTo(s.cx - s.R, s.cy); c.lineTo(s.cx - s.R * 0.6, s.cy); c.moveTo(s.cx + s.R * 0.6, s.cy); c.lineTo(s.cx + s.R, s.cy);
-    c.moveTo(s.cx, s.cy + s.R * 0.6); c.lineTo(s.cx, s.cy + s.R); c.stroke();
-    c.fillStyle = 'rgba(20,10,30,.9)';
-    for (var i = 1; i <= 3; i++) { c.beginPath(); c.arc(s.cx + i * s.R * 0.14, s.cy, 2.2, 0, 7); c.arc(s.cx - i * s.R * 0.14, s.cy, 2.2, 0, 7); c.fill(); c.beginPath(); c.arc(s.cx, s.cy + i * s.R * 0.14, 2.2, 0, 7); c.fill(); }
-    c.fillStyle = '#ff3b4f'; c.beginPath(); c.arc(s.cx, s.cy, 2.6, 0, 7); c.fill();
-    if (G.phase === 'aim' && G.aimGoal && G.last && canShoot()) drawAimMarker(c, s.cx + (G.aimGoal.x - s.ax) * s.z, s.cy + (G.aimGoal.y - s.ay) * s.z, s.a);
     c.restore();
-    c.save(); c.strokeStyle = '#1a1026'; c.lineWidth = 10 * s.a; c.beginPath(); c.arc(s.cx, s.cy, s.R + 4, 0, 7); c.stroke();
-    c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2; c.beginPath(); c.arc(s.cx, s.cy, s.R - 1, 0, 7); c.stroke(); c.restore();
+    c.save();
+    // lens: dark outside the circle, soft vignette inside
+    c.fillStyle = 'rgba(8,4,16,' + (0.94 * s.a).toFixed(3) + ')';
+    c.beginPath(); c.rect(-20, -20, W + 40, H + 40); c.moveTo(s.cx + s.R, s.cy); c.arc(s.cx, s.cy, s.R, 0, Math.PI * 2); c.fill('evenodd');
+    var vg = c.createRadialGradient(s.cx, s.cy, s.R * 0.5, s.cx, s.cy, s.R);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,5,25,' + (0.6 * s.a).toFixed(3) + ')');
+    c.fillStyle = vg; c.beginPath(); c.arc(s.cx, s.cy, s.R, 0, 7); c.fill();
+    c.globalAlpha = s.a;
+    var R = s.R, x0 = s.cx, y0 = s.cy;
+    c.strokeStyle = 'rgba(20,10,30,.9)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x0 - R, y0); c.lineTo(x0 - 12, y0); c.moveTo(x0 + 12, y0); c.lineTo(x0 + R, y0);
+    c.moveTo(x0, y0 - R); c.lineTo(x0, y0 - 12); c.moveTo(x0, y0 + 12); c.lineTo(x0, y0 + R); c.stroke();
+    c.lineWidth = 6;
+    c.beginPath(); c.moveTo(x0 - R, y0); c.lineTo(x0 - R * 0.55, y0); c.moveTo(x0 + R * 0.55, y0); c.lineTo(x0 + R, y0);
+    c.moveTo(x0, y0 + R * 0.55); c.lineTo(x0, y0 + R); c.stroke();
+    c.fillStyle = 'rgba(20,10,30,.9)';
+    for (var i = 1; i <= 4; i++) { var t = i * R * 0.1; c.beginPath(); c.arc(x0 + t, y0, 2.4, 0, 7); c.arc(x0 - t, y0, 2.4, 0, 7); c.fill(); c.beginPath(); c.arc(x0, y0 + t, 2.4, 0, 7); c.fill(); }
+    c.fillStyle = '#ff3b4f'; c.beginPath(); c.arc(x0, y0, 3, 0, 7); c.fill();
+    c.strokeStyle = '#1a1026'; c.lineWidth = 12; c.beginPath(); c.arc(x0, y0, R + 5, 0, 7); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2; c.beginPath(); c.arc(x0, y0, R - 1, 0, 7); c.stroke();
+    if (G.phase === 'aim' && G.aimGoal && G.last && canShoot()) drawAimMarker(c, x0 + (G.aimGoal.x - s.ax) * s.z, y0 + (G.aimGoal.y - s.ay) * s.z, s.a);
+    c.globalAlpha = 0.8 * s.a; c.fillStyle = '#fff'; c.font = '800 13px ' + FONT; c.textAlign = 'center';
+    c.fillText(s.z.toFixed(1) + 'x', x0, y0 + R * 0.55 + 18);
+    c.restore();
   }
   function drawCrosshair(c, x, y) {
     c.save(); c.lineWidth = 4; c.strokeStyle = 'rgba(30,10,40,.6)';
@@ -2400,7 +2463,7 @@
   }
   // Screen point to aim at so an arc throw passes through world point T (low-angle ballistic solution).
   function solveAim(T) {
-    var O = launchOrigin(), v = G.era.shot.speed, g = G.era.shot.g;
+    var O = launchOrigin(), v = shotSpeed(), g = G.era.shot.g;
     var dx = T.x - O.x, dz = T.z - O.z, dy = T.y - O.y, R = Math.hypot(dx, dz);
     var disc = v * v * v * v - g * (g * R * R + 2 * dy * v * v);
     if (disc < 0) return null;
@@ -2449,7 +2512,7 @@
     if (!canShoot()) return null;
     G.shotsP--; G.cool = coolTime(); G.stats.shots++;
     sfx.throw(); G.player.recoil = 1;
-    var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed;
+    var O = launchOrigin(), d = aimDir(sx, sy), v = shotSpeed();
     if (!SIM) G.throwLog = { sx: sx, sy: sy, px: PX, xf: G.player.xf };
     var pr = { id: ++projId, x: O.x, y: O.y, z: O.z, vx: d.x * v, vy: d.y * v, vz: d.z * v, t: 0 };
     G.proj.push(pr);
@@ -2715,7 +2778,7 @@
     }
     if (G.scopeHold > 0) G.scopeHold -= dt;
     var st = G.scopeTarget > 0 || G.scopeHold > 0 ? 1 : 0;
-    G.scope = approach(G.scope, st, dt / (st ? 0.16 : 0.2));
+    G.scope = approach(G.scope, st, dt / (st ? 0.18 : 0.1));  // in 0.18 s; out: snap back in 0.1 s
     G.shake = Math.max(0, G.shake - dt * 30);
     if (G.cool > 0) { G.cool -= dt; if (G.cool <= 0 && G.phase === 'aim' && G.shotsP > 0 && !playerCentered()) recenterPlayer(); }
     if (G.phase === 'aim') stepAim(dt);
@@ -2776,13 +2839,13 @@
   // ---------- render ----------
   // Ring = where the spear crosses the enemy's depth (or lands, if it falls short first). Follows the player's launch point.
   function guideRing(sx, sy) {
-    var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed, g = G.era.shot.g, e = G.enemy;
+    var O = launchOrigin(), d = aimDir(sx, sy), v = shotSpeed(), g = G.era.shot.g, e = G.enemy;
     var tz = d.z > 0.01 ? (e.z - O.z) / (d.z * v) : 3, ty = O.y + d.y * v * tz - 0.5 * g * tz * tz;
     if (ty < 0) { var A = 0.5 * g, B = -d.y * v; tz = (-B + Math.sqrt(B * B + 4 * A * O.y)) / (2 * A); ty = 0.02; }
     return proj(O.x + d.x * v * tz, ty, O.z + d.z * v * tz);
   }
   function drawGuide(c, sx, sy) {
-    var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed, g = G.era.shot.g, e = G.enemy, pts = [];
+    var O = launchOrigin(), d = aimDir(sx, sy), v = shotSpeed(), g = G.era.shot.g, e = G.enemy, pts = [];
     for (var t = 0; t < 3; t += 0.035) {
       var x = O.x + d.x * v * t, y = O.y + d.y * v * t - 0.5 * g * t * t, z = O.z + d.z * v * t;
       if (y < 0 || z > e.z + 1) break;
@@ -2841,7 +2904,7 @@
     }
     drawNearSpears(ctx);
     drawFx(ctx, 'near');
-    G.markerOn = false;
+    G.markerOn = false; G.scopeView = { on: false, a: 0, z: 1 };
     if (G.era.shot.kind === 'hitscan') drawScope(ctx);
     if (G.phase === 'aim' && G.era.shot.kind === 'arc' && canShoot()) {
       if (G.aiming) {
@@ -2890,7 +2953,7 @@
   function pos(ev) { var r = cv.getBoundingClientRect(); return { x: ev.clientX - r.left, y: ev.clientY - r.top }; }
   function clampAim(p) { return { x: clamp(p.x, 0, W), y: clamp(p.y, H * 0.08, H * 0.92) }; }
   function aimFeel() { return BALANCE.aimFeel[G.era.id] || BALANCE.aimFeel.stone; }
-  function scopeDamp() { return G.era.shot.kind === 'hitscan' ? 1 + BALANCE.aimFeel.scopeDamp * (G.era.shot.zoom - 1) * easeOut(G.scope) : 1; }
+  function scopeDamp() { return G.era.shot.kind === 'hitscan' ? 1 + BALANCE.aimFeel.scopeDamp * (G.era.shot.zoom - 1) * easeOut(G.scope) : 1; }  // base zoom on purpose: upgraded zoom never shrinks reach
   // Screen span the aim has to cover: outer edges of the outer enemy covers (x), ground -> vSpan world units up (y).
   function aimSpan() {
     var n = (G.era.cover.spots || [0]).length, a = coverGeomAt(0), b = coverGeomAt(n - 1);
@@ -2968,8 +3031,9 @@
       if (G.era.shot.kind === 'arc') { var ax = G.aim.x, ay = G.aim.y; releaseAim(); playerThrow(ax, ay); return; }
       var held = G.time - G.pressT, steady = held >= 0.22 && G.scope > 0.7;
       var sw = swayOffset(), x = G.aim.x + sw.x * easeOut(G.scope), y = G.aim.y + sw.y * easeOut(G.scope);
-      if (!steady) { var an = rnd() * 6.283, d = rnd() * 9; x += Math.cos(an) * d; y += Math.sin(an) * d; }
-      releaseAim(); G.scopeHold = 0.35;
+      if (!steady) { var an = rnd() * 6.283, d = rnd() * 9 * (1 - steadyOf()); x += Math.cos(an) * d; y += Math.sin(an) * d; }
+      G.fireLog = { x: x, y: y, aimX: G.aim.x, aimY: G.aim.y, steady: steady };
+      releaseAim(); G.scopeHold = 0.12;  // brief look through the scope at the shot, then snap back out
       playerFire(x, y);
     } else releaseAim();
   }
@@ -3022,7 +3086,10 @@
     modern: '<svg viewBox="0 0 58 58"><defs><linearGradient id="i4" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2870"/><stop offset="1" stop-color="#f0b070"/></linearGradient></defs><rect width="58" height="58" fill="url(#i4)"/><rect y="38" width="58" height="20" fill="#6e6c74"/><rect x="8" y="18" width="8" height="28" fill="#5a5864"/><rect x="25" y="14" width="8" height="32" fill="#5a5864"/><rect x="42" y="18" width="8" height="28" fill="#5a5864"/><rect x="5" y="16" width="14" height="5" fill="#8a8894"/><rect x="22" y="12" width="14" height="5" fill="#8a8894"/><rect x="39" y="16" width="14" height="5" fill="#8a8894"/><circle cx="46" cy="10" r="4" fill="#ffe08a"/></svg>',
     space: '<svg viewBox="0 0 58 58"><rect width="58" height="58" fill="#1a1740"/><circle cx="10" cy="10" r="1.2" fill="#fff"/><circle cx="46" cy="16" r="1" fill="#fff"/><circle cx="30" cy="6" r="1" fill="#fff"/><circle cx="40" cy="32" r="9" fill="#b58cff"/><ellipse cx="40" cy="32" rx="15" ry="4" stroke="#ffd23f" stroke-width="2" fill="none"/><rect y="46" width="58" height="12" fill="#9aa0b8"/><path d="M6 36l18-6" stroke="#39e0ff" stroke-width="3" stroke-linecap="round"/></svg>'
   };
-  function weaponIcon(w) { return '<svg viewBox="0 0 56 56"><rect width="56" height="56" rx="10" fill="#3a2a5e"/><path d="M12 46L40 16" stroke="#a0663a" stroke-width="5" stroke-linecap="round"/><path d="M36 20l3-3" stroke="#7a4a2e" stroke-width="8"/><path d="M38 8l10 2-2 10z" fill="' + (w.tip || '#ccc') + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/></svg>'; }
+  function weaponIcon(w, t) {
+    var glint = t ? '<circle cx="44" cy="12" r="' + (4 + t * 2) + '" fill="' + TIER_COL[t] + '" opacity=".75"/><path d="M48 3l1.6 5.4L55 10l-5.4 1.6L48 17l-1.6-5.4L41 10l5.4-1.6z" fill="#fff"/>' : '';
+    return '<svg viewBox="0 0 56 56"><rect width="56" height="56" rx="10" fill="#3a2a5e"/>' + glint + '<path d="M12 46L40 16" stroke="#a0663a" stroke-width="5" stroke-linecap="round"/><path d="M36 20l3-3" stroke="#7a4a2e" stroke-width="8"/><path d="M38 8l10 2-2 10z" fill="' + (w.tip || '#ccc') + '" stroke="rgba(0,0,0,.35)" stroke-width="1"/></svg>';
+  }
   function outfitIcon(o) {
     var L = o.look || { tunic: '#999', spot: '#666' };
     var s = '<svg viewBox="0 0 56 56"><rect width="56" height="56" rx="10" fill="#3a2a5e"/><path d="M16 14h10l14 8-2 26H18l-4-26z" fill="' + L.tunic + '"/>';
@@ -3082,11 +3149,56 @@
     if (kind === 'weapons') { var i = list.indexOf(it); if (i > 0 && SAVE.owned.weapons.indexOf(list[i - 1].id) < 0) return 'locked'; }
     return getCoins() >= it.cost ? 'buy' : 'poor';
   }
+  // ---------- weapon upgrades tab ----------
+  function upgStatRows(era, t) {
+    var U = BALANCE.upgrades, w = weaponOf(era), f = upgFx(era, t), base = w.dmg, arc = era.shot.kind === 'arc';
+    var rows = [['Damage', Math.round(base * (1 + f.dmg)) + ' (head ' + Math.round(base * (1 + f.dmg) * BALANCE.headMult) + ')', f.dmg ? '+' + Math.round(f.dmg * 100) + '%' : '']];
+    rows.push(['Steady Aim', arc ? 'guide +' + Math.round(f.steady * 25) + '%' : 'sway −' + Math.round(f.steady * 100) + '%', '']);
+    if (arc) rows.push(['Speed', 'throw +' + Math.round(f.speed * 100) + '%', '']);
+    else rows.push(['Zoom', ((era.shot.zoom || 1) + f.zoom).toFixed(1) + 'x', '']);
+    return rows;
+  }
+  function tierEffect(era, t) {
+    var U = BALANCE.upgrades, arc = era.shot.kind === 'arc';
+    return '+' + Math.round(U.dmg[t] * 100) + '% damage · ' + (arc ? 'guide +' + Math.round(U.steady[t] * 25) + '% · throw +' + Math.round(U.speed[t] * 100) + '% faster'
+      : 'sway −' + Math.round(U.steady[t] * 100) + '% · zoom ' + ((era.shot.zoom || 1) + U.zoom[t]).toFixed(1) + 'x');
+  }
+  function renderUpgrades(era) {
+    var U = BALANCE.upgrades, t = upgTier(era), mx = maxTier(), w = weaponOf(era), h = '', stars = '';
+    for (var i = 1; i <= mx; i++) stars += i <= t ? '★' : '<i>★</i>';
+    var now = upgStatRows(era, t), nxt = t < mx ? upgStatRows(era, t + 1) : null;
+    h += '<div class="upHead"><span class="iicon">' + weaponIcon(w, t) + '</span><span class="itext"><b>' + w.name + ' · ' + U.names[t] + '</b><span class="stars">' + stars + '</span></span></div>';
+    h += '<div class="upStats">';
+    now.forEach(function (r, k) { h += '<span>' + r[0] + '</span><b>' + r[1] + '</b><em>' + (nxt && nxt[k][1] !== r[1] ? '→ ' + nxt[k][1] : '') + '</em>'; });
+    h += '</div><div class="shopList" style="margin-top:8px">';
+    for (var k = 1; k <= mx; k++) {
+      var st = k <= t ? 'have' : k === t + 1 ? 'next' : 'later', btn;
+      if (st === 'have') btn = '<button class="sbtn eq" disabled>OWNED</button>';
+      else if (st === 'next') btn = '<button class="sbtn ' + (getCoins() >= U.cost[k] ? 'buy' : 'poor') + '" data-act="upgrade" data-id="' + era.id + '">🪙 ' + fmt(U.cost[k]) + '</button>';
+      else btn = '<button class="sbtn lockd" data-act="uplocked" data-id="' + era.id + '">🔒 Tier ' + (k - 1) + ' first</button>';
+      h += '<div class="item tier ' + st + '" data-tier="' + k + '"><span class="tbadge" style="background:' + TIER_COL[k] + '">T' + k + '</span><span class="itext"><b>' + U.names[k] + ' · 🪙 ' + fmt(U.cost[k]) + '</b><small>' + tierEffect(era, k) + '</small></span>' + btn + '</div>';
+    }
+    h += '</div><p class="upNote">Upgrades boost whichever ' + era.weapon.toLowerCase() + ' you equip. Pretend coins only: win a match for +' + BALANCE.coins.win + '.</p>';
+    $('shopList').innerHTML = h;
+  }
+  // Atomic: build the new save, write it, then adopt it. Admin sessions are already maxed and never write upgrades.
+  function buyUpgrade(eraId) {
+    var era = ERA_BY_ID[eraId]; if (!era) return 'unknown';
+    var t = upgTier(era), U = BALANCE.upgrades;
+    if (t >= maxTier()) return 'max';
+    var cost = U.cost[t + 1];
+    if (getCoins() < cost) return 'poor';
+    var n = cloneSave(SAVE); n = spendCoinsOn(n, cost); n.upg[era.id] = t + 1;
+    if (!writeSave(n)) return 'error';
+    SAVE = n; sfx.coin();
+    return 'ok';
+  }
   function renderShop() {
-    var era = shopEra(), list = BALANCE[shopTab][era.id], h = '';
+    var era = shopEra(), list = BALANCE[shopTab] && BALANCE[shopTab][era.id], h = '';
     $('sCoins').textContent = fmt(getCoins());
     var sub = document.querySelector('.shopEra'); if (sub) sub.textContent = era.name + ' gear';
     Array.prototype.forEach.call(document.querySelectorAll('#shopTabs button'), function (b) { setClass(b, 'on', b.getAttribute('data-tab') === shopTab); });
+    if (shopTab === 'upgrades') { renderUpgrades(era); return; }
     list.forEach(function (it, i) {
       var st = itemState(shopTab, it, list), stat, btn;
       if (shopTab === 'weapons') stat = 'Damage <b>' + it.dmg + '</b> · head ' + it.dmg * BALANCE.headMult + (it.note ? '<br>' + it.note : '');
@@ -3122,6 +3234,18 @@
     SAVE = n; return 'ok';
   }
   function shopClick(act, id) {
+    if (act === 'upgrade' || act === 'uplocked') {
+      var era = ERA_BY_ID[id], t = era ? upgTier(era) : 0, cost = BALANCE.upgrades.cost[t + 1];
+      if (act === 'uplocked') shopMsg('Upgrade one tier at a time.');
+      else {
+        var r0 = buyUpgrade(id);
+        if (r0 === 'ok') shopMsg(BALANCE.upgrades.names[t + 1] + ' upgrade! ' + tierEffect(era, t + 1) + '.');
+        else if (r0 === 'poor') shopMsg('You need ' + fmt(cost - getCoins()) + ' more coins. Play matches to earn more!');
+        else if (r0 === 'max') shopMsg('Fully upgraded!');
+        else if (r0 === 'error') shopMsg("Couldn't save right now, so nothing was spent. Try again.");
+      }
+      renderShop(); return;
+    }
     var f = findItem(shopTab, id); if (!f) return;
     if (act === 'buy') {
       var r = buyItem(shopTab, id);
@@ -3210,7 +3334,9 @@
   // ---------- test hook ----------
   window.__toss = {
     G: G, BALANCE: BALANCE, ERAS: ERAS, CFG: CFG,
-    admin: function () { return !!ADMIN; }, getCoins: getCoins, aimSens: aimSens, applyAimDelta: applyAimDelta,
+    admin: function () { return !!ADMIN; }, upgTier: function (id) { return upgTier(ERA_BY_ID[id] || G.era); }, upgFx: function (id) { return upgFx(ERA_BY_ID[id] || G.era); }, buyUpgrade: buyUpgrade, setUpgrade: function (id, t) { var n = cloneSave(SAVE); n.upg[id] = clamp(t, 0, maxTier()); SAVE = n; writeSave(n); bodyExt = {}; slotCache.key = ''; },
+    shotSpeed: function () { return shotSpeed(); }, scopeZoom: function () { return scopeZoom(); }, steady: function () { return steadyOf(); }, sway: function () { return swayOffset(); }, scopeView: function () { return G.scopeView || null; },
+    loadSaveRaw: function (raw) { try { localStorage.setItem(SAVE_KEY, raw); } catch (e) {} SAVE = loadSave(); return SAVE; }, getCoins: getCoins, aimSens: aimSens, applyAimDelta: applyAimDelta,
     save: function () { return cloneSave(SAVE); }, rawSave: function () { try { return localStorage.getItem(SAVE_KEY); } catch (e) { return null; } },
     saveKey: SAVE_KEY, saveWasCorrupt: function () { return saveWasCorrupt; },
     resetSave: function () { SAVE = defaultSave(); writeSave(SAVE); renderMenu(); },
