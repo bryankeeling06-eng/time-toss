@@ -1405,14 +1405,8 @@
   }
   function enemyAiming() { return G.phase === 'playerHide' || G.phase === 'botFire' || G.phase === 'swap'; }
 
-  function drawEnemyLayer(c, res) {
-    var e = G.enemy, g = enemyGeom(), cg = g.cover, era = G.era;
-    if (era.shot.kind === 'arc') drawWorldSpears(c, function (z) { return z > e.z; });
-    if (e.duck < 0.6) { c.fillStyle = 'rgba(130,50,50,.3)'; c.beginPath(); c.ellipse(g.x + 0.1 * g.s, g.foot, 0.45 * g.s, 0.09 * g.s, 0, 0, 7); c.fill(); }
-    c.save();
-    c.beginPath(); c.rect(g.x - 3 * g.s, g.foot - 3 * g.s, 6 * g.s, 3 * g.s); c.clip();
-    c.translate(g.x, g.foot + g.sink * g.s); c.scale(g.s, g.s);
-    applyKnock(c, e, 1);
+  function drawEnemyBody(c) {
+    var e = G.enemy, era = G.era;
     var hurt = e.hitT > 0 || G.ko === 'bot';
     var aiming = enemyAiming(), wind = G.phase === 'botFire' && G.tell > 0, look = era.bot.look;
     if (look === 'soldier') {
@@ -1436,6 +1430,15 @@
       drawCaveman(c, PAL_C, wind, hurt, hs);
       if (e.flash > 0) { c.globalAlpha = Math.min(0.9, e.flash); drawCaveman(c, PAL_CW, wind, hurt, hs); c.globalAlpha = 1; }
     }
+  }
+  function drawEnemyLayer(c, res) {
+    var e = G.enemy, g = enemyGeom(), cg = g.cover, era = G.era;
+    if (era.shot.kind === 'arc') drawWorldSpears(c, function (z) { return z > e.z; });
+    if (e.duck < 0.6) { c.fillStyle = 'rgba(130,50,50,.3)'; c.beginPath(); c.ellipse(g.x + 0.1 * g.s, g.foot, 0.45 * g.s, 0.09 * g.s, 0, 0, 7); c.fill(); }
+    c.save();
+    c.beginPath(); c.rect(g.x - 3 * g.s, g.foot - 3 * g.s, 6 * g.s, 3 * g.s); c.clip();
+    c.translate(g.x, g.foot + g.sink * g.s); c.scale(g.s, g.s);
+    if (ragActive(e)) ragDraw(c, e, 'bot', drawEnemyBody); else drawEnemyBody(c);
     c.restore();
     if (era.cover.spots) {
       for (var ri = 0; ri < era.cover.spots.length; ri++) {
@@ -1457,10 +1460,10 @@
       c.fillStyle = '#fff'; c.font = '900 ' + Math.round(br * 1.5) + 'px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('!', bx, by + br * 0.08);
     }
     if (e.dizzy > 0 || G.ko === 'bot') {
-      var n = 3, rad = g.s * 0.32;
+      var n = 3, rad = g.s * 0.32, ho = ragHeadOffset('bot'), hx0 = g.head.x + ho.dx, hy0 = g.head.y + ho.dy;
       for (var i = 0; i < n; i++) {
         var an = G.time * 5 + i * 2.094;
-        star(c, g.head.x + Math.cos(an) * rad, g.head.y - g.s * 0.28 + Math.sin(an) * rad * 0.35, g.s * 0.07, g.s * 0.03, 5, an);
+        star(c, hx0 + Math.cos(an) * rad, hy0 - g.s * 0.28 + Math.sin(an) * rad * 0.35, g.s * 0.07, g.s * 0.03, 5, an);
         c.fillStyle = '#ffe14a'; c.fill();
       }
     }
@@ -1539,14 +1542,9 @@
     c.moveTo(sx, sy - r); c.lineTo(sx + r * 0.25, sy - r * 0.25); c.lineTo(sx + r, sy); c.lineTo(sx + r * 0.25, sy + r * 0.25); c.lineTo(sx, sy + r); c.lineTo(sx - r * 0.25, sy + r * 0.25); c.lineTo(sx - r, sy); c.lineTo(sx - r * 0.25, sy - r * 0.25); c.closePath(); c.fill();
     c.restore();
   }
-  function drawPlayer(c) {
+  function drawPlayerBody(c) {
     var p = G.player, outfit = G.era.player.outfit, look = outfitOf(G.era).look || {};
     TIPAT = null;
-    c.save(); c.translate(PX, PY); c.scale(PS, PS);
-    applyKnock(c, p, 260);
-    var shake = p.hitT > 0 ? Math.sin(G.time * 60) * 4 * p.hitT : 0;
-    c.fillStyle = 'rgba(140,40,60,.35)'; c.beginPath(); c.ellipse(4, 0, 74, 14, 0, 0, 7); c.fill();
-    c.translate(shake, 0);
     var armed = !(G.phase === 'aim' && G.cool > coolTime() - 0.35 && G.cool > 0);
     var tip = weaponOf(G.era).tip || '#9aa0ac';
     if (outfit === 'cave') {
@@ -1570,6 +1568,15 @@
       if (p.flash > 0) { c.globalAlpha = Math.min(0.85, p.flash); drawPlayerModern(c, PAL_PW, p.duck, p.recoil); c.globalAlpha = 1; }
     }
     drawUpgradeLook(c, upgTier(G.era));
+  }
+  function drawPlayer(c) {
+    var p = G.player, outfit = G.era.player.outfit, look = outfitOf(G.era).look || {};
+    TIPAT = null;
+    c.save(); c.translate(PX, PY); c.scale(PS, PS);
+    var shake = p.hitT > 0 ? Math.sin(G.time * 60) * 4 * p.hitT : 0;
+    c.fillStyle = 'rgba(140,40,60,.35)'; c.beginPath(); c.ellipse(4, 0, 74, 14, 0, 0, 7); c.fill();
+    c.translate(shake, 0);
+    if (ragActive(p)) ragDraw(c, p, 'player', drawPlayerBody); else drawPlayerBody(c);
     c.restore();
   }
   // ---------- player rocks + sliding ----------
@@ -1589,7 +1596,7 @@
       try {
         for (var k = 0; k < poses.length; k++) {
           c.clearRect(0, 0, cw, chh); PX = cw / 2; PY = chh - 40; PS = 1; p.duck = poses[k].duck; p.recoil = poses[k].recoil; p.flash = 0; p.hitT = 0; p.kbT = 0; G.phase = poses[k].ph; G.cool = poses[k].cool;
-          drawPlayer(c);
+          RAG_OFF = true; try { drawPlayer(c); } finally { RAG_OFF = false; }
           var d = c.getImageData(0, 0, cw, chh).data;
           for (var y = 0; y < chh; y += 2) for (var x = 0; x < cw; x++) if (d[(y * cw + x) * 4 + 3] > 8) { if (x - cw / 2 < l) l = x - cw / 2; if (x + 1 - cw / 2 > r) r = x + 1 - cw / 2; }
         }
@@ -2057,17 +2064,105 @@
     }
   }
 
-  // ---------- knockback (cosmetic; hitboxes are unchanged) ----------
+  // ---------- ragdoll (cosmetic; hitboxes are unchanged) ----------
+  // Sprite-slice spring ragdoll: the character (any era look, flash, gear, upgrade glint) is drawn once per
+  // frame into an offscreen canvas, cut into head / torso / arms(+weapon) / legs, and each part is drawn
+  // rotated about its joint. Joints are damped angle springs kicked by a per-zone impulse; a KO turns the
+  // root springs off so the whole body topples with gravity and the limbs flop. Only runs while active.
   var KNOCK_DUR = { head: 0.6, body: 0.45, legs: 0.75 };
-  function knock(o, zone, dir) { o.kbK = zone; o.kbDur = KNOCK_DUR[zone] || 0.45; o.kbT = o.kbDur; o.kbDir = dir || 1; }
-  function applyKnock(c, o, unit) {
-    if (!(o.kbT > 0)) return;
-    var u = 1 - o.kbT / o.kbDur, d = o.kbDir || 1, k = o.kbK;
-    if (k === 'head') { c.rotate(d * 0.3 * Math.abs(Math.sin(u * Math.PI * 3)) * (1 - u)); }   // stagger: wobble on the feet (one-sided, toward kbDir)
-    else if (k === 'legs') {                                                                     // stumble / flop, quick recovery
-      var a = u < 0.28 ? easeOut(u / 0.28) : Math.pow(1 - (u - 0.28) / 0.72, 2);
-      c.translate(d * 0.1 * unit * a, 0.16 * unit * a); c.rotate(d * 1.0 * a);
-    } else { var b = Math.pow(1 - u, 2); c.translate(d * 0.16 * unit * b, 0); c.rotate(d * 0.22 * b); }  // body: knocked back
+  var RAG_J = ['root', 'torso', 'head', 'armL', 'armR', 'legL', 'legR'], RAG_OFF = false;
+  var RAG_K = { root: 150, torso: 160, head: 180, armL: 120, armR: 120, legL: 105, legR: 105 };
+  function ragNew() { var r = { on: false, ko: 0, koDir: 1, t: 0, a: {}, v: {}, land: 0 }; RAG_J.forEach(function (k) { r.a[k] = 0; r.v[k] = 0; }); return r; }
+  function ragOf(o) { return o.rag || (o.rag = ragNew()); }
+  function ragReset(o) { o.rag = ragNew(); }
+  function knock(o, zone, dir) { o.kbK = zone; o.kbDur = KNOCK_DUR[zone] || 0.45; o.kbT = o.kbDur; o.kbDir = dir || 1; ragHit(o, zone, dir || 1); }
+  function ragHit(o, zone, d) {
+    var r = ragOf(o), v = r.v; r.on = true; r.t = 0; r.zone = zone;
+    if (zone === 'head') { v.head += d * 13; v.torso += d * 3.2; v.root += d * 1.2; v.armL -= d * 3; v.armR -= d * 3; }        // head snaps back, body follows a little
+    else if (zone === 'legs') { v.legL -= 8.5; v.legR += 8.5; v.torso += d * 3.5; v.head -= d * 4; v.armL -= 6; v.armR += 6; }  // knees give: legs splay, hips drop
+    else { v.torso += d * 9.5; v.root += d * 2; v.head -= d * 5; v.armL -= d * 7; v.armR -= d * 7; }                             // body: folds, arms + head lag
+  }
+  function ragKO(o, d) {
+    var r = ragOf(o); r.on = true; r.ko = 1; r.koDir = d || 1; r.t = 0; r.land = 0;
+    r.v.root += d * 1.6; r.v.head += d * 6; r.v.armL -= d * 7; r.v.armR -= d * 7; r.v.legL -= 3; r.v.legR += 3;
+  }
+  var RAG_LIM = { root: 0.35, torso: 0.7, head: 0.75, armL: 0.9, armR: 0.9, legL: 0.85, legR: 0.85 };
+  function ragStep(o, dt) {
+    var r = o.rag; if (!r || !r.on) return;
+    r.t += dt;
+    var h = Math.min(dt, 1 / 60), n = Math.max(1, Math.ceil(dt / h - 1e-6)); h = dt / n;
+    for (var s = 0; s < n; s++) {
+      for (var i = 0; i < RAG_J.length; i++) {
+        var k = RAG_J[i], K = RAG_K[k], acc;
+        if (r.ko) {
+          if (k === 'root') {                                       // topple: inverted pendulum about the foot, springs off
+            acc = 16 * Math.sin(r.a.root + r.koDir * 0.12);
+            r.v.root += acc * h; r.a.root += r.v.root * h;
+            var lie = Math.PI / 2 * 0.97;
+            if (Math.abs(r.a.root) > lie) {                           // hit the floor: bounce a bit, limbs flop
+              r.a.root = lie * Math.sign(r.a.root); var hitV = Math.abs(r.v.root); r.v.root = -r.v.root * 0.28;
+              if (hitV > 0.8) { var dd = r.koDir; r.v.head += dd * hitV * 3; r.v.armL += dd * hitV * 2.6; r.v.armR -= dd * hitV * 1.6; r.v.legL += dd * hitV * 1.8; r.v.legR -= dd * hitV; r.v.torso -= dd * hitV; r.land++; }
+            }
+            continue;
+          }
+          K = K * 0.16;                                             // floppy joints
+          acc = -K * r.a[k] - 2 * 0.22 * Math.sqrt(K) * r.v[k];
+        } else acc = -K * r.a[k] - 2 * 0.48 * Math.sqrt(K) * r.v[k];
+        r.v[k] += acc * h; r.a[k] += r.v[k] * h;
+        var L = RAG_LIM[k] * (r.ko ? 1.6 : 1);
+        if (r.a[k] > L) { r.a[k] = L; if (r.v[k] > 0) r.v[k] *= -0.3; } else if (r.a[k] < -L) { r.a[k] = -L; if (r.v[k] < 0) r.v[k] *= -0.3; }
+      }
+    }
+    if (!r.ko) {
+      var still = true;
+      for (var j = 0; j < RAG_J.length; j++) if (Math.abs(r.a[RAG_J[j]]) > 0.004 || Math.abs(r.v[RAG_J[j]]) > 0.03) { still = false; break; }
+      if (still) { for (var q = 0; q < RAG_J.length; q++) { r.a[RAG_J[q]] = 0; r.v[RAG_J[q]] = 0; } r.on = false; }
+    }
+  }
+  // Part template in the character's local units (feet at 0,0, up is -y).
+  function ragTpl(who) {
+    if (who === 'player') {
+      var p = G.player, hip = -150 + 64 * p.duck, sh = hip - 112 + p.recoil * 6;
+      return { box: [-230, -560, 260, 30], hip: hip, cut: hip + 14, neck: sh - 8, sh: sh + 6, shx: 50, hx: 20, armX: 50, headW: 46, leg: -hip, u: 260 };
+    }
+    return { box: [-1.5, -2.7, 1.5, 0.25], hip: -0.45, cut: -0.43, neck: -1.19, sh: -1.08, shx: 0.3, hx: 0.12, armX: 0.31, headW: 0.29, leg: 0.45, u: 1 };
+  }
+  var RAG_STAT = { frames: 0, ms: 0 };
+  function ragDraw(c, o, who, bodyFn) {
+    // Vector slices: the body is redrawn once per part, clipped to that part's region (no offscreen
+    // canvas, so no raster readback; stays crisp under the scope zoom). Clips overlap by ~1px to hide seams.
+    var r = o.rag, T = ragTpl(who), B = T.box, t0 = performance.now();
+    var m = c.getTransform(), sc = Math.max(0.05, Math.hypot(m.a, m.b)), pad = 1 / sc, a = r.a, d = r.ko ? r.koDir : 1;
+    function slice(rects) {
+      c.save(); c.beginPath();
+      for (var i = 0; i < rects.length; i++) { var q = rects[i]; c.rect(q[0] - pad, q[1] - pad, q[2] - q[0] + 2 * pad, q[3] - q[1] + 2 * pad); }
+      c.clip(); bodyFn(c); c.restore();
+    }
+    function rot(px, py, ang) { if (!ang) return; c.translate(px, py); c.rotate(ang); c.translate(-px, -py); }
+    c.save();
+    // root: lean about the feet (KO: topple about the foot on the fall side); legs buckle -> hips drop
+    var spl = (Math.abs(a.legL) + Math.abs(a.legR)) / 2, drop = T.leg * (1 - Math.cos(Math.min(1.2, spl))) * 0.85;
+    rot(r.ko ? d * 0.16 * T.u : 0, 0, a.root);
+    c.save(); c.translate(0, drop); rot(-T.hx, T.hip, a.legL); slice([[B[0], T.cut, 0, B[3]]]); c.restore();
+    c.save(); c.translate(0, drop); rot(T.hx, T.hip, a.legR); slice([[0, T.cut, B[2], B[3]]]); c.restore();
+    c.translate(0, drop); rot(0, T.hip, a.torso);
+    slice([[-T.armX, T.neck, T.armX, T.cut]]);
+    c.save(); rot(-T.shx, T.sh, a.armL); slice([[B[0], B[1], -T.armX, T.cut], [-T.armX, B[1], -T.headW, T.neck]]); c.restore();
+    c.save(); rot(T.shx, T.sh, a.armR); slice([[T.armX, B[1], B[2], T.cut], [T.headW, B[1], T.armX, T.neck]]); c.restore();
+    c.save(); rot(0, T.neck, a.head); slice([[-T.headW, B[1], T.headW, T.neck]]); c.restore();
+    c.restore();
+    RAG_STAT.frames++; RAG_STAT.ms += performance.now() - t0;
+  }
+  function ragActive(o) { return !RAG_OFF && o.rag && o.rag.on; }
+  // Where the head is drawn right now (screen-space offset of the neck pivot from rest), for tests / fx.
+  function ragHeadOffset(who) {
+    var o = who === 'player' ? G.player : G.enemy, r = o.rag; if (!r || !r.on) return { dx: 0, dy: 0 };
+    var T = ragTpl(who), d = r.ko ? r.koDir : 1, spl = (Math.abs(r.a.legL) + Math.abs(r.a.legR)) / 2, drop = T.leg * (1 - Math.cos(Math.min(1.2, spl))) * 0.85;
+    function R(x, y, px, py, an) { var cx = x - px, cy = y - py, c = Math.cos(an), s = Math.sin(an); return [px + cx * c - cy * s, py + cx * s + cy * c]; }
+    var q = R(0, T.neck - 0.25 * T.u, 0, T.hip, r.a.torso); q = [q[0], q[1] + drop];
+    q = R(q[0], q[1], r.ko ? d * 0.16 * T.u : 0, 0, r.a.root);
+    var unit = who === 'player' ? PS : enemyGeom().s / 1;
+    return { dx: (q[0] - 0) * unit, dy: (q[1] - (T.neck - 0.25 * T.u)) * unit, x: q[0], y: q[1] };
   }
 
   // ---------- slow-mo shot cam ----------
@@ -2105,7 +2200,12 @@
         tx = q.x + (eq.x - q.x) * w; ty = q.y + (eq.y - q.y) * w; tz = c.mode === 'slow' ? J.zoomSlow : J.zoomFollow;
       }
     }
-    if (c.mode === 'hold') { tx = c.hx; ty = c.hy; tz = c.id ? J.zoomHold : J.zoomHitscan; if (c.t >= c.holdFor) { c.mode = 'out'; c.t = 0; } }
+    if (c.mode === 'hold') {
+      tx = c.hx; ty = c.hy; tz = c.id ? J.zoomHold : J.zoomHitscan;
+      var kr = G.ko === 'bot' && G.enemy.rag;   // KO shot: stay on him (still slow-mo) until the ragdoll hits the floor
+      if (kr && kr.ko && (kr.land < 1 || kr.t < 0.75)) { var kg = enemyGeom(); tx = kg.x; ty = kg.foot - 0.75 * kg.s; c.t = Math.min(c.t, c.holdFor * 0.5); }
+      if (c.t >= c.holdFor) { c.mode = 'out'; c.t = 0; }
+    }
     if (c.mode === 'out') { tx = CX; ty = H / 2; tz = 1; rate = 18; if (c.t >= J.outReal) { camOff(); return; } }
     if (c.tot > 4.5) { camOff(); return; }
     var a = Math.min(1, rdt * rate);
@@ -2381,7 +2481,7 @@
       if (Math.abs(nx - prev) < sep) nx = Math.abs(lane[0] - prev) > Math.abs(lane[1] - prev) ? lane[0] : lane[1];
       e.wx = nx; e.tx = nx;
     }
-    camOff(); G.slowLog = {}; e.dash = false; e.kbT = 0; e.kbK = null; G.player.kbT = 0; G.player.kbK = null;
+    camOff(); G.slowLog = {}; e.dash = false; e.kbT = 0; e.kbK = null; G.player.kbT = 0; G.player.kbK = null; ragReset(e); ragReset(G.player);
     e.baseWx = nx; e.z = rr(era.dist[0], era.dist[1]); e.duck = 1; e.duckTarget = 1; e.flash = 0; e.hitT = 0; e.hatOff = 0; e.duckT = 0; e.dizzy = 0; e.throwT = 0;
     G.coverH = era.cover.tall; G.coverT = 1; G.coverFrom = G.coverTo = era.cover.tall;
     G.shotsP = CFG.shots; G.shotsB = CFG.shots; G.cool = 0; G.tell = 0; G.botShots = []; G.ending = false;
@@ -2432,6 +2532,7 @@
   function knockOut(who) {
     if (G.ko) return;
     G.ko = who; G.koT = 1.6; releaseAim(); G.proj = [];
+    if (who === 'bot') { var ke = G.enemy; ke.flash = Math.min(ke.flash, 0.35); ragKO(ke, ke.kbDir || (ke.wx < 0 ? 1 : -1)); } else ragKO(G.player, PX < W / 2 ? 1 : -1);  // player always falls toward the middle
     banner(who === 'bot' ? 'KNOCKOUT!' : 'YOU GOT BONKED!', who === 'bot' ? 'good' : 'go'); hint('');
   }
   function matchOver(reason) {
@@ -2723,6 +2824,7 @@
     if (G.coverT < 1) { G.coverT = Math.min(1, G.coverT + dt / 0.4); G.coverH = G.coverFrom + (G.coverTo - G.coverFrom) * easeOut(G.coverT); }
     // enemy AI
     if (e.kbT > 0) e.kbT = Math.max(0, e.kbT - dt); if (p.kbT > 0) p.kbT = Math.max(0, p.kbT - dt);
+    ragStep(e, dt); ragStep(p, dt);
     e.flash = Math.max(0, e.flash - dt * 3.5); e.dizzy = Math.max(0, e.dizzy - dt); e.throwT = Math.max(0, (e.throwT || 0) - dt);
     if (e.hatOff > 0 && e.hitT <= 0) e.hatOff = 0;
     var ag = era.agility;
@@ -3373,6 +3475,18 @@
     projAt: function (y) { var e = G.enemy; return proj(e.wx, y, e.z); },
     solveAimAt: function (y) { var e = G.enemy; return solveAim({ x: e.wx, y: y, z: e.z }); }, bodyExt: function () { return playerBodyExt(); }, aimEase: function () { return aimEaseCfg(); }, centered: function () { return playerCentered(); },
     playerKnock: function () { return { k: G.player.kbK || null, t: G.player.kbT || 0 }; },
+    rag: function (who) { var o = who === 'player' ? G.player : G.enemy, r = o.rag || ragNew(); return { on: !!r.on, ko: r.ko, t: r.t, land: r.land, a: Object.assign({}, r.a), zone: r.zone || null }; },
+    ragHit: function (who, zone, dir) { knock(who === 'player' ? G.player : G.enemy, zone, dir || 1); },
+    ragKO: function (who) { knockOut(who); },
+    ragHead: function (who) { return ragHeadOffset(who); },
+    ragStat: function (reset) { var r = { frames: RAG_STAT.frames, ms: RAG_STAT.ms }; if (reset) { RAG_STAT.frames = 0; RAG_STAT.ms = 0; } return r; },
+    renderMs: function (n) { var t0 = performance.now(); for (var i = 0; i < (n || 30); i++) render(); return (performance.now() - t0) / (n || 30); },
+    playerInk: function () {  // horizontal extent of the player's drawn pixels (ragdoll included) in CSS px
+      var cv = document.createElement('canvas'); cv.width = Math.ceil(W); cv.height = Math.ceil(H); var c = cv.getContext('2d', { willReadFrequently: true });
+      drawPlayer(c); var d = c.getImageData(0, 0, cv.width, cv.height).data, l = 1e9, r = -1e9;
+      for (var y = 0; y < cv.height; y += 2) for (var x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3] > 20) { if (x < l) l = x; if (x > r) r = x; }
+      return { l: l, r: r + 1, W: W };
+    },
     dashing: function () { return !!G.enemy.dash; },
     coinShown: function () { return $('oCoinN').textContent; },
     timeScale: function (k) { G.ts = k; },
