@@ -19,7 +19,8 @@
     legMult: 0.75,          // leg hits ("TOE STUBBED!") do 75% damage
     // Juice: slow-mo shot cam. slowmo = time scale; slowWindow = sim seconds before impact when slow-mo kicks in
     // (0.3 s of sim at 0.3x = ~1 s real). holdReal/outReal/hitscanReal are real seconds. Tap skips.
-    juice: { slowmo: 0.3, slowWindow: 0.3, holdReal: 0.22, outReal: 0.14, hitscanReal: 0.6, zoomFollow: 1.15, zoomSlow: 1.7, zoomHold: 1.8, zoomHitscan: 1.5, maxChunks: 40 },
+    // Slow-mo + zoom only on head hits and the knockout shot (decided at release by pre-resolving the throw).
+    juice: { slowmo: 0.3, slowWindow: 0.3, holdReal: 0.22, outReal: 0.14, hitscanReal: 0.6, zoomFollow: 1, zoomSlow: 1.7, zoomHold: 1.8, zoomHitscan: 1.5, maxChunks: 40 },
     // Breakable cover: each cover is cols vertical columns (1 = full height). A direct hit removes `hit` from the
     // struck column and `splash` from its neighbours (x shieldMult for Moon energy shields). Cover HP = average column
     // height x 100. Your covers take playerMult of that. Only ONE cover per side can be destroyed per match: once one is gone the others can't drop a
@@ -310,12 +311,13 @@
     result: null, lastReward: null, rewarded: false,
     shieldOpen: false,
     cam: { on: false, mode: '', id: 0, t: 0, tot: 0, z: 1, fx: 195, fy: 422, hx: 0, hy: 0, holdFor: 0 }, camStarts: 0, camSkips: 0,
-    flashY: 0, covers: null, lastCallout: null, calloutLog: []
+    flashY: 0, covers: null, lastCallout: null, calloutLog: [], fateLog: [], fateErr: 0, driftLog: [], slowLog: {}
   };
   // ---------- audio (WebAudio synth; resumes on first gesture for iOS) ----------
   // After a phone call / app switch, iOS leaves AudioContext in 'interrupted' or 'suspended'.
   // We resume on visibility/focus/pageshow + context statechange, but never unmute the speaker toggle.
   var actx = null, master = null, noiseBuf = null;
+  var SIM = false;  // true while the shot cam pre-resolves a throw on a snapshot (no sound / DOM / rewards)
   var muted = SAVE.muted;
   var audioWasInterrupted = false;
   function createAudioGraph() {
@@ -372,6 +374,7 @@
   }
   function audio() { resumeAudio(true); }
   function tone(f, dur, type, vol, f2, delay) {
+    if (SIM) return;
     if (!actx || muted || actx.state !== 'running') return;
     var t0 = actx.currentTime + (delay || 0);
     var o = actx.createOscillator(), g = actx.createGain();
@@ -382,6 +385,7 @@
     o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.02);
   }
   function noise(dur, vol, fc, delay) {
+    if (SIM) return;
     if (!actx || muted || actx.state !== 'running' || !noiseBuf) return;
     var t0 = actx.currentTime + (delay || 0);
     var s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
@@ -1984,7 +1988,8 @@
       if (!pr) { c.mode = 'hold'; c.t = 0; c.holdFor = J.holdReal; }
       else {
         var q = proj(pr.x, pr.y, pr.z), e = G.enemy, eq = proj(e.wx, 0.9, e.z);
-        if (c.mode === 'follow' && timeToImpact(pr) < J.slowWindow) { c.mode = 'slow'; c.t = 0; }
+        var tLeft = pr.fate ? pr.fate.t - pr.t : timeToImpact(pr);
+        if (c.mode === 'follow' && tLeft < J.slowWindow) { c.mode = 'slow'; c.t = 0; G.slowLog[c.id] = true; }
         var w = c.mode === 'slow' ? 0.35 : 0.5;
         tx = q.x + (eq.x - q.x) * w; ty = q.y + (eq.y - q.y) * w; tz = c.mode === 'slow' ? J.zoomSlow : J.zoomFollow;
       }
@@ -2100,18 +2105,20 @@
   function setClass(el, cls, on) { if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on); }
   var bannerT = 0;
   function banner(text, cls, dur) {
+    if (SIM) return;
     var b = $('banner');
     b.textContent = text; b.className = 'banner' + (text ? ' show' : '') + (cls ? ' ' + cls : '');
     bannerT = dur || 0;
   }
-  function hint(text, low) { var h = $('hint'); if (h.textContent !== text) h.textContent = text; setClass(h, 'show', !!text); h.style.top = low ? 'calc(env(safe-area-inset-top) + 172px)' : ''; }
+  function hint(text, low) { if (SIM) return; var h = $('hint'); if (h.textContent !== text) h.textContent = text; setClass(h, 'show', !!text); h.style.top = low ? 'calc(env(safe-area-inset-top) + 172px)' : ''; }
   function showCount(n) {
+    if (SIM) return;
     var el = $('count');
     setClass(el, 'show', n > 0);
     if (n > 0 && hudCache.count !== n) { hudCache.count = n; $('countNum').textContent = n; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
     if (n <= 0) hudCache.count = 0;
   }
-  function bump(id) { var el = $(id); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  function bump(id) { if (SIM) return; var el = $(id); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
   function pips(id, left) {
     var key = id + 'n'; if (hudCache[key] === left) return; hudCache[key] = left;
     var el = $(id), h = '';
@@ -2241,7 +2248,7 @@
       if (Math.abs(nx - prev) < sep) nx = Math.abs(lane[0] - prev) > Math.abs(lane[1] - prev) ? lane[0] : lane[1];
       e.wx = nx; e.tx = nx;
     }
-    camOff(); e.dash = false; e.kbT = 0; e.kbK = null; G.player.kbT = 0; G.player.kbK = null;
+    camOff(); G.slowLog = {}; e.dash = false; e.kbT = 0; e.kbK = null; G.player.kbT = 0; G.player.kbK = null;
     e.baseWx = nx; e.z = rr(era.dist[0], era.dist[1]); e.duck = 1; e.duckTarget = 1; e.flash = 0; e.hitT = 0; e.hatOff = 0; e.duckT = 0; e.dizzy = 0; e.throwT = 0;
     G.coverH = era.cover.tall; G.coverT = 1; G.coverFrom = G.coverTo = era.cover.tall;
     G.shotsP = CFG.shots; G.shotsB = CFG.shots; G.cool = 0; G.tell = 0; G.botShots = []; G.ending = false;
@@ -2295,6 +2302,7 @@
     banner(who === 'bot' ? 'KNOCKOUT!' : 'YOU GOT BONKED!', who === 'bot' ? 'good' : 'go'); hint('');
   }
   function matchOver(reason) {
+    if (SIM) return;
     // Reward exactly once per match. Opening SHOP / ERA MAP used to leave phase!='over'
     // while G.ko was still set, so the tick re-entered matchOver and stacked trophies/streak.
     if (G.rewarded) return;
@@ -2331,6 +2339,42 @@
     var p = proj(O.x + d.x * k, O.y + d.y * k, O.z + d.z * k);
     return { x: p.x, y: p.y };
   }
+  // Slow-mo shot cam only for head hits and the knockout shot.
+  function wantsSlowMo(res, lethal) { return res === 'head' || (isHitRes(res) && !!lethal); }
+  // Pre-resolve a throw at release: snapshot the world, run the real update() forward at a fixed 1/60 step with sound,
+  // DOM and rewards muted until this projectile lands, record its fate, restore. The real flight then applies that fate,
+  // so whether the cam engages always matches the actual result (moving bot, breaking cover and earlier spears included).
+  var simFates = {};
+  function cloneVal(v) { return typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)); }
+  function camCommitted(id) { var c = G.cam; return c.on && c.id === id && (c.mode === 'slow' || c.mode === 'hold' || c.mode === 'out'); }
+  // Re-predicts every in-flight spear whose slow-mo hasn't started yet, together (a later, faster throw can land first).
+  function preResolve(pr) {
+    var redo = {}, i, k;
+    for (i = 0; i < G.proj.length; i++) if (!camCommitted(G.proj[i].id)) { redo[G.proj[i].id] = true; G.proj[i].fate = null; }
+    var snap = {}, keys = Object.keys(G);
+    for (k = 0; k < keys.length; k++) snap[keys[k]] = keys[k] === 'era' ? G.era : cloneVal(G[keys[k]]);
+    var keep = { PX: PX, seedState: seedState, seed2: seed2, bannerT: bannerT, chs: cover_hit_scr };
+    simFates = {}; SIM = true;
+    var pending = function () { return G.proj.some(function (q) { return redo[q.id] && !simFates[q.id]; }); };
+    try { for (var n = 0; n < 60 * 6 && pending(); n++) update(1 / 60); } catch (err) { simFates = {}; }
+    SIM = false;
+    var got = simFates;
+    for (k in G) if (!(k in snap)) delete G[k];
+    for (k = 0; k < keys.length; k++) G[keys[k]] = snap[keys[k]];
+    PX = keep.PX; seedState = keep.seedState; seed2 = keep.seed2; bannerT = keep.bannerT; cover_hit_scr = keep.chs;
+    var best = null;
+    for (i = 0; i < G.proj.length; i++) {
+      var q = G.proj[i], o = got[q.id];
+      if (!redo[q.id]) continue;
+      q.fate = o ? { res: o.res, hit: o.hit, t: o.t, ewx: o.ewx, duck: o.duck, lethal: !!o.lethal } : null;  // null: cleared by an earlier KO
+      if (q.fate && wantsSlowMo(q.fate.res, q.fate.lethal) && (!best || q.fate.t - q.t < best.fate.t - best.t)) best = q;
+    }
+    // cam: only a pending (still invisible) follow can be re-pointed or dropped; a committed slow-mo plays out
+    var c = G.cam;
+    if (!(c.on && camCommitted(c.id))) { if (best) { if (!(c.on && c.id === best.id)) camStart(best.id, null); } else if (c.on) camOff(); }
+    var out = got[pr.id];
+    return out || { res: null };
+  }
   function playerThrow(sx, sy) {
     if (!canShoot()) return null;
     G.shotsP--; G.cool = coolTime(); G.stats.shots++;
@@ -2338,7 +2382,10 @@
     var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed;
     var pr = { id: ++projId, x: O.x, y: O.y, z: O.z, vx: d.x * v, vy: d.y * v, vz: d.z * v, t: 0 };
     G.proj.push(pr);
-    camStart(pr.id, null);
+    var fate = preResolve(pr);
+    G.fateLog.push({ id: pr.id, res: fate.res, lethal: !!fate.lethal, slowmo: wantsSlowMo(fate.res, fate.lethal) });
+    if (G.fateLog.length > 30) G.fateLog.shift();
+
     return { id: pr.id };
   }
   function stepProj(dt) {
@@ -2350,6 +2397,13 @@
       for (var j = 0; j < n && !res; j++) {
         var px = pr.x, py = pr.y, pz = pr.z, f, x, y;
         pr.vy -= g * h; pr.x += pr.vx * h; pr.y += pr.vy * h; pr.z += pr.vz * h; pr.t += h;
+        if (pr.fate) {  // decided by preResolve() (at release, refreshed on later releases): cam and result always agree
+          if (pr.t >= pr.fate.t - 1e-9) {
+            res = pr.fate.res; hit = pr.fate.hit ? JSON.parse(JSON.stringify(pr.fate.hit)) : null;
+            if (!SIM) { var dr = Math.abs(e.wx - pr.fate.ewx) + 1.25 * Math.abs(e.duck - pr.fate.duck); G.fateErr = Math.max(G.fateErr, dr); pr.fate.drift = dr; G.driftLog.push({ id: pr.id, d: dr, wx: e.wx, fwx: pr.fate.ewx, duck: e.duck, fduck: pr.fate.duck, n: G.proj.length }); if (G.driftLog.length > 50) G.driftLog.shift(); }
+          }
+          continue;
+        }
         if (pz < zc && pr.z >= zc) {
           f = (zc - pz) / (pr.z - pz); x = px + (pr.x - px) * f; y = py + (pr.y - py) * f;
           var ch = enemyCoverHit(x, y);
@@ -2365,7 +2419,11 @@
         if (!res && pr.y <= 0) { res = 'miss'; hit = { x: pr.x, y: 0, z: pr.z }; }
         if (!res && (pr.z > e.z + 25 || pr.t > 4 || Math.abs(pr.x) > 40)) { res = 'miss'; hit = null; }
       }
-      if (res) { G.proj.splice(i, 1); var sp = Math.hypot(pr.vx, pr.vy, pr.vz) || 1; resolvePlayerShot(res, hit, { x: pr.vx / sp, y: pr.vy / sp, z: pr.vz / sp }, null, pr.id); }
+      if (res) {
+        if (SIM && !pr.fate) simFates[pr.id] = { res: res, hit: hit, t: pr.t, ewx: e.wx, duck: e.duck, hp0: G.hpB };
+        G.proj.splice(i, 1); var sp = Math.hypot(pr.vx, pr.vy, pr.vz) || 1; resolvePlayerShot(res, hit, { x: pr.vx / sp, y: pr.vy / sp, z: pr.vz / sp }, null, pr.id);
+        if (SIM && simFates[pr.id] && !simFates[pr.id].done) { simFates[pr.id].done = true; simFates[pr.id].lethal = isHitRes(res) && G.hpB <= 0; }
+      }
     }
   }
   function resolvePlayerShot(res, hit, dir, scr, id) {
@@ -2402,7 +2460,7 @@
       if (G.era.shot.kind === 'arc') sfx.thud(); else sfx.puff();
     }
     while (G.stuck.length > 8) G.stuck.shift();
-    G.lastShot = { id: id || null, res: res, dmg: dmg, landZ: hit ? hit.z : 99, enemyZ: e.z };
+    G.lastShot = { id: id || null, res: res, dmg: dmg, landZ: hit ? hit.z : 99, enemyZ: e.z, ko: isHitRes(res) && G.hpB <= 0 };
     G.shotLog.push(G.lastShot);
     return G.lastShot;
   }
@@ -2450,9 +2508,11 @@
     if (res === 'blocked' && G.era.cover.kind === 'shield') {
       addFx({ k: 'flash', x: x, y: y, size: 28, rot: rnd(), life: 0.2, layer: 'world' });
     }
-    G.scope = 0; G.scopeHold = 0; G.scopeTarget = 0;
-    camStart(0, { x: x, y: y });
-    return resolvePlayerShot(res, null, null, { x: x, y: y });
+    var out = resolvePlayerShot(res, null, null, { x: x, y: y });
+    var lethal = isHitRes(res) && G.hpB <= 0;
+    G.fateLog.push({ id: 0, res: res, lethal: lethal, slowmo: wantsSlowMo(res, lethal) }); if (G.fateLog.length > 30) G.fateLog.shift();
+    if (wantsSlowMo(res, lethal)) { G.scope = 0; G.scopeHold = 0; G.scopeTarget = 0; camStart(0, { x: x, y: y }); }
+    return out;
   }
   function botFire(s) {
     G.shotsB--; s.fired = true;
@@ -2598,6 +2658,7 @@
     }
 
     if (G.ko) { G.koT -= dt; if (G.koT <= 0 && G.phase !== 'over' && !G.rewarded) matchOver('ko'); return; }
+    if (SIM) return;  // lookahead only needs the world + projectiles, not phase flow
 
     switch (G.phase) {
       case 'enemyHide':
@@ -3058,6 +3119,9 @@
     step: function (sec, fps, noRender) { var d = 1 / (fps || 60), n = Math.round(sec / d); for (var i = 0; i < n; i++) { update(d); camUpdate(d); if (!noRender) updHud(d); } if (!noRender) render(); },
     // frame(): like step() but with the real loop's slow-mo time scaling (sec = real seconds)
     frame: function (sec) { var d = 1 / 60, n = Math.round(sec / d), sim = 0; for (var i = 0; i < n; i++) { var k = camScale() * G.ts; update(d * k); sim += d * k; camUpdate(d); updHud(d); } render(); return sim; },
+    slowIds: function () { return Object.keys(G.slowLog).map(Number); }, driftLog: function () { return G.driftLog.slice(); },
+    fates: function () { return G.fateLog.slice(); }, fateErr: function () { return G.fateErr; },
+    projFate: function () { return G.proj.map(function (q) { return q.fate ? q.fate.res : null; }); },
     cam: function () { var c = G.cam; return { on: c.on, mode: c.mode, z: c.z, k: camScale(), starts: G.camStarts, skips: G.camSkips }; },
     camSkip: function () { return camSkip(); },
     coverHP: function () { if (!G.covers) return null; return { enemy: [0, 1, 2].map(function (i) { return coverHpPct('e', i); }), player: [0, 1, 2].map(function (i) { return coverHpPct('p', i); }) }; },
@@ -3084,7 +3148,7 @@
     throwAt: function (x, y) { return playerThrow(x, y); },
     fireAt: function (x, y) { return playerFire(x, y); },
     solveAim: function (part) {
-      var e = G.enemy, T = part === 'head' ? { x: e.wx, y: 1.45 - e.duck * 1.25, z: e.z } : part === 'legs' ? { x: e.wx, y: 0.25 - e.duck * 1.25, z: e.z } : { x: e.wx, y: Math.max(G.coverH + 0.15, 1.0) - e.duck * 1.25, z: e.z };
+      var e = G.enemy, T = part === 'head' ? { x: e.wx, y: 1.45 - e.duck * 1.25, z: e.z } : part === 'legs' ? { x: e.wx, y: 0.25 - e.duck * 1.25, z: e.z } : part === 'chest' ? { x: e.wx, y: Math.min(1.1, G.coverH + 0.08) - e.duck * 1.25, z: e.z } : { x: e.wx, y: Math.max(G.coverH + 0.15, 1.0) - e.duck * 1.25, z: e.z };
       return solveAim(T);
     },
     enemyScreen: function (part) { var g = enemyGeom(); return part === 'head' ? { x: g.head.x, y: g.head.y } : part === 'legs' ? { x: g.x, y: g.body.y1 - (g.body.y1 - g.body.y0) * 0.15 } : { x: g.x, y: (g.body.y0 + g.ridgeTop) / 2 }; },
