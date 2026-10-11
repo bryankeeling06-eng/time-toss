@@ -44,7 +44,10 @@
       // with this chance, but only if you've already been standing there for retargetSettle seconds.
       retarget: 0.60, retargetSettle: 0.35
     },
-    move: { slide: 0.25 },  // seconds to slide between your rocks
+    move: { slide: 0.25, recenter: 0.3, edgeMargin: 6 },  // slide = s between your rocks; recenter = s to glide to center before your throws; edgeMargin = px kept clear at screen edges
+    // Aim easing (v18): the aim glides toward where your finger has pulled it instead of jumping 1:1.
+    // ease = catch-up rate (1/s); cap = max aim speed in px/s at 844 px tall (scaled with screen height; rifles also divide by scope zoom).
+    aimEase: { stone: { ease: 6, cap: 520 }, castle: { ease: 4.5, cap: 380 }, wildwest: { ease: 5.5, cap: 460 }, modern: { ease: 6, cap: 560 }, space: { ease: 6.5, cap: 600 } },
     // Weapon upgrade levels per era (buy in order; equip any owned). dmg = body damage.
     // steady: extra aim-guide length (share of the arc). reload: throw cooldown multiplier.
     weapons: {
@@ -298,7 +301,7 @@
     era: ERAS[0], phase: 'menu', pt: 0, time: 0, ts: 1, paused: false,
     round: 1, sudden: 0, hpP: 100, hpB: 100, maxP: 100, maxB: 100, dmgP: 0, dmgB: 0, bot: botStats(ERAS[0], 0),
     shotsP: 3, shotsB: 3, countNum: 0, timeLeft: 0, cool: 0, endT: 0, ending: false, ko: null,
-    aim: { x: 195, y: 400 }, aiming: false, hover: null, pointerId: null, pressT: 0, last: null,
+    aim: { x: 195, y: 400 }, aimGoal: null, aimSpeed: 0, relLog: null, throwLog: null, aiming: false, hover: null, pointerId: null, pressT: 0, last: null,
     scope: 0, scopeTarget: 0, scopeHold: 0,
     enemy: { baseWx: 0.5, z: 9, wx: 0.5, tx: 0.5, duck: 0, duckTarget: 0, duckT: 0, actT: 0, flash: 0, hitT: 0, hatOff: 0, pose: 0, dizzy: 0 },
     coverH: 0.8, coverFrom: 0.8, coverTo: 0.8, coverT: 1,
@@ -1512,7 +1515,51 @@
     c.restore();
   }
   // ---------- player rocks + sliding ----------
-  function pSlots() { return G.era.playerSpots || [0.2]; }
+  // Player rock positions (fractions of W). The outer two are pulled in when needed so his whole body
+  // (widest pose, incl. bow / weapon) and the outer covers stay fully on screen at any width.
+  var slotCache = { key: '', v: null }, bodyExt = {};
+  function playerBodyExt() {
+    var key = G.era.id + '|' + outfitOf(G.era).id;
+    if (bodyExt[key]) return bodyExt[key];
+    var ext = { l: 80, r: 135 };
+    bodyExt[key] = ext;  // guard against re-entry while measuring
+    try {
+      var cw = 700, chh = 760, oc = document.createElement('canvas'); oc.width = cw; oc.height = chh;
+      var c = oc.getContext('2d', { willReadFrequently: true }), p = G.player, keep = { PX: PX, PY: PY, PS: PS, duck: p.duck, recoil: p.recoil, flash: p.flash, hitT: p.hitT, kbT: p.kbT, ph: G.phase, cool: G.cool };
+      var poses = [{ ph: 'aim', duck: 0, recoil: 0, cool: 0 }, { ph: 'aim', duck: 0, recoil: 1, cool: 0 }, { ph: 'botFire', duck: 1, recoil: 0, cool: 0 }, { ph: 'botFire', duck: 0, recoil: 0, cool: 0 }];
+      var l = 0, r = 0;
+      try {
+        for (var k = 0; k < poses.length; k++) {
+          c.clearRect(0, 0, cw, chh); PX = cw / 2; PY = chh - 40; PS = 1; p.duck = poses[k].duck; p.recoil = poses[k].recoil; p.flash = 0; p.hitT = 0; p.kbT = 0; G.phase = poses[k].ph; G.cool = poses[k].cool;
+          drawPlayer(c);
+          var d = c.getImageData(0, 0, cw, chh).data;
+          for (var y = 0; y < chh; y += 2) for (var x = 0; x < cw; x++) if (d[(y * cw + x) * 4 + 3] > 8) { if (x - cw / 2 < l) l = x - cw / 2; if (x + 1 - cw / 2 > r) r = x + 1 - cw / 2; }
+        }
+      } finally { PX = keep.PX; PY = keep.PY; PS = keep.PS; p.duck = keep.duck; p.recoil = keep.recoil; p.flash = keep.flash; p.hitT = keep.hitT; p.kbT = keep.kbT; G.phase = keep.ph; G.cool = keep.cool; }
+      if (r > 0) ext = { l: -l + 2, r: r + 2 };
+    } catch (err) {}
+    bodyExt[key] = ext; return ext;
+  }
+  function pSlots() {
+    var base = G.era.playerSpots || [0.2];
+    if (base.length < 2) return base;
+    var key = W + '|' + PS + '|' + G.era.id + '|' + outfitOf(G.era).id;
+    if (slotCache.key === key) return slotCache.v;
+    var ext = playerBodyExt(), m = BALANCE.move.edgeMargin, kind = playerCoverKind();
+    var halfC = (kind === 'haystack' ? 95 : 98) * PS;  // cover half-width (drawn at slot x + 10*PS)
+    var lo = Math.max(ext.l * PS + m, halfC - 10 * PS + m) / W, hi = 1 - Math.max(ext.r * PS + m, halfC + 10 * PS + m) / W;
+    var v = base.slice(); v[0] = Math.max(base[0], lo); v[v.length - 1] = Math.min(base[base.length - 1], hi);
+    slotCache = { key: key, v: v }; return v;
+  }
+  function centerSlot() { return Math.floor(pSlots().length / 2); }
+  // Before every throw he glides back to the middle rock in his shooting pose.
+  function recenterPlayer() {
+    var p = G.player, sl = pSlots(), n = centerSlot();
+    G.dragMove = false;
+    if (Math.abs(p.xf - sl[n]) < 0.002 && p.mt >= BALANCE.move.slide) { placePlayer(n); return; }
+    p.from = p.xf; p.to = sl[n]; p.mt = 0; p.slot = n; p.settled = 0; p.recenter = true;
+  }
+  function playerCentered() { var p = G.player; return !p.recenter && Math.abs(p.xf - pSlots()[centerSlot()]) < 0.002; }
   function multiSlot() { return pSlots().length > 1; }
   function playerCoverKind() { return (G.era.playerCover && G.era.playerCover.kind) || G.era.cover.kind; }
   function playerCoverGeomAt(i) {
@@ -1532,11 +1579,11 @@
   function movePlayer(dir) {
     var p = G.player, sl = pSlots(), n = clamp(p.slot + dir, 0, sl.length - 1);
     if (!canMove() || n === p.slot || G.dragMove) return p.slot;
-    p.from = p.xf; p.to = sl[n]; p.mt = 0; p.slot = n; p.settled = 0;
+    p.from = p.xf; p.to = sl[n]; p.mt = 0; p.slot = n; p.settled = 0; p.recenter = false;
     sfx.step();
     return n;
   }
-  function placePlayer(i) { var p = G.player, sl = pSlots(); i = clamp(i, 0, sl.length - 1); p.slot = i; p.xf = p.from = p.to = sl[i]; p.mt = 9; p.settled = 9; G.dragMove = false; PX = W * p.xf; }
+  function placePlayer(i) { var p = G.player, sl = pSlots(); i = clamp(i, 0, sl.length - 1); p.slot = i; p.xf = p.from = p.to = sl[i]; p.mt = 9; p.settled = 9; p.recenter = false; G.dragMove = false; PX = W * p.xf; }
   function dragMoveTo(sx) {
     var sl = pSlots(), lo = sl[0], hi = sl[sl.length - 1], xf = clamp(sx / W, lo, hi), p = G.player;
     p.xf = xf; p.from = xf; p.to = xf; p.mt = 0; p.settled = 0; p.slot = nearestIdx(sl, xf); PX = W * p.xf;
@@ -1548,10 +1595,11 @@
   }
   function clearDragMove() { if (G.dragMove) { G.dragMove = false; snapToNearestCover(); } }
   function stepPlayerSlide(dt) {
-    var p = G.player, T = BALANCE.move.slide;
+    var p = G.player, T = p.recenter ? BALANCE.move.recenter : BALANCE.move.slide;
     if (G.dragMove) { PX = W * p.xf; return; }
+    if (p.mt >= T && p.recenter) p.recenter = false;
     if (p.mt < T) { p.mt += dt; var u = clamp(p.mt / T, 0, 1); u = u * u * (3 - 2 * u); p.xf = p.from + (p.to - p.from) * u; }
-    else { p.xf = p.to; p.settled += dt; }
+    else { p.xf = p.to; p.settled += dt; p.recenter = false; }
     PX = W * p.xf;
   }
   function drawTargetMarker(c, i, a) {
@@ -1794,9 +1842,10 @@
       }
     }
   }
-  function drawTexts(c) {
+  function drawTexts(c, only) {
     for (var i = 0; i < G.fx.length; i++) {
-      var f = G.fx[i]; if (f.k === 'num') { drawNum(c, f); continue; } if (f.k !== 'txt') continue;
+      var f = G.fx[i]; if (only && (only === 'world') !== (f.layer === 'world')) continue;
+      if (f.k === 'num') { drawNum(c, f); continue; } if (f.k !== 'txt') continue;
       var u = f.t / f.life, p = f.layer === 'world' ? toScreen(f.x, f.y) : { x: f.x, y: f.y };
       var y = p.y - 26 - u * 40, al = u > 0.6 ? 1 - (u - 0.6) / 0.4 : 1, sc = u < 0.12 ? 0.6 + u * 3.3 : 1;
       c.save(); c.globalAlpha = al; c.translate(clamp(p.x, 70, W - 70), y); c.scale(sc, sc);
@@ -1952,7 +2001,7 @@
   function applyKnock(c, o, unit) {
     if (!(o.kbT > 0)) return;
     var u = 1 - o.kbT / o.kbDur, d = o.kbDir || 1, k = o.kbK;
-    if (k === 'head') { c.rotate(d * 0.3 * Math.sin(u * Math.PI * 3) * (1 - u)); }             // stagger: wobble on the feet
+    if (k === 'head') { c.rotate(d * 0.3 * Math.abs(Math.sin(u * Math.PI * 3)) * (1 - u)); }   // stagger: wobble on the feet (one-sided, toward kbDir)
     else if (k === 'legs') {                                                                     // stumble / flop, quick recovery
       var a = u < 0.28 ? easeOut(u / 0.28) : Math.pow(1 - (u - 0.28) / 0.72, 2);
       c.translate(d * 0.1 * unit * a, 0.16 * unit * a); c.rotate(d * 1.0 * a);
@@ -2262,7 +2311,7 @@
   function setPhase(p) { G.phase = p; G.pt = 0; G.endT = 0; G.ending = false; }
   function dropCover(to) { G.coverFrom = G.coverH; G.coverTo = to; G.coverT = 0; }
   function startAim() {
-    setPhase('aim'); showCount(0); G.countNum = 0; clearDragMove();
+    setPhase('aim'); showCount(0); G.countNum = 0; G.dragMove = false; recenterPlayer(); G.aimGoal = null;
     if (G.era.cover.low !== G.coverH) dropCover(G.era.cover.low);
     G.enemy.actT = 0.8; G.enemy.duckTarget = 0; G.enemy.wx = G.enemy.tx = G.enemy.baseWx; G.enemy.plan = null; G.enemy.dash = false;
     var cg = coverGeom(); G.aim.x = cg.x; G.aim.y = cg.top - 60;
@@ -2322,7 +2371,7 @@
 
   // ---------- shooting ----------
   var projId = 0;
-  function canShoot() { return G.phase === 'aim' && G.shotsP > 0 && G.cool <= 0 && !G.ending && !G.ko; }
+  function canShoot() { return G.phase === 'aim' && G.shotsP > 0 && G.cool <= 0 && !G.ending && !G.ko && !G.player.recenter; }
   function aimDir(sx, sy) {
     var O = launchOrigin(), D = G.enemy.z, P = { x: (sx - CX) * D / FOC, y: CAM_H - (sy - Y0) * D / FOC, z: D };
     var dx = P.x - O.x, dy = P.y - O.y, dz = P.z - O.z, L = Math.hypot(dx, dy, dz);
@@ -2380,6 +2429,7 @@
     G.shotsP--; G.cool = coolTime(); G.stats.shots++;
     sfx.throw(); G.player.recoil = 1;
     var O = launchOrigin(), d = aimDir(sx, sy), v = G.era.shot.speed;
+    if (!SIM) G.throwLog = { sx: sx, sy: sy, px: PX, xf: G.player.xf };
     var pr = { id: ++projId, x: O.x, y: O.y, z: O.z, vx: d.x * v, vy: d.y * v, vz: d.z * v, t: 0 };
     G.proj.push(pr);
     var fate = preResolve(pr);
@@ -2548,7 +2598,7 @@
       G.hpP = Math.max(0, G.hpP - dmg); G.dmgB += dmg; G.roundGain.b += dmg; G.stats.botHits++;
       tx = PX + 10 * PS; ty = res === 'head' ? PY - 300 * PS : playerTorso().y;
       p.flash = 1.2; p.hitT = 0.5; G.shake = 10; G.flashY = 0.7;
-      knock(p, res === 'head' ? 'head' : 'body', PX < W / 2 ? -1 : 1);
+      knock(p, res === 'head' ? 'head' : 'body', PX < W / 2 ? 1 : -1);  // lean toward the middle so he never tips off-screen
       addFx({ k: 'pow', x: tx, y: ty, size: 46 * PS, text: res === 'head' ? 'BONK!' : 'OOF!', rot: rnd() * 6, life: 0.75, layer: 'near', col: '#ffd1e0' });
       addFx({ k: 'num', x: tx + 30, y: ty - 30, text: '-' + dmg, size: 28, vx: (rnd2() - 0.5) * 40, life: 1.1, layer: 'near' });
       addFx({ k: 'txt', x: tx + 30, y: ty - 70, text: 'OUCH!', col: '#ff9aa8', size: 22, life: 1.0, layer: 'near' });
@@ -2581,7 +2631,7 @@
     G.botLog.push(res);
     return res;
   }
-  function releaseAim() { G.pointerId = null; G.scopeTarget = 0; G.last = null; G.aiming = false; if (G.dragMove) { G.dragMove = false; snapToNearestCover(); } }
+  function releaseAim() { G.pointerId = null; G.scopeTarget = 0; G.last = null; G.aiming = false; G.aimGoal = null; if (G.dragMove) { G.dragMove = false; snapToNearestCover(); } }
   // ---------- update ----------
   function update(dt) {
     G.time += dt; G.pt += dt;
@@ -2646,7 +2696,8 @@
     var st = G.scopeTarget > 0 || G.scopeHold > 0 ? 1 : 0;
     G.scope = approach(G.scope, st, dt / (st ? 0.16 : 0.2));
     G.shake = Math.max(0, G.shake - dt * 30);
-    if (G.cool > 0) G.cool -= dt;
+    if (G.cool > 0) { G.cool -= dt; if (G.cool <= 0 && G.phase === 'aim' && G.shotsP > 0 && !playerCentered()) recenterPlayer(); }
+    if (G.phase === 'aim') stepAim(dt);
 
     for (var i = G.fx.length - 1; i >= 0; i--) { if (G.fx[i].layer === 'screen') continue; G.fx[i].t += dt; if (G.fx[i].t >= G.fx[i].life) G.fx.splice(i, 1); }
     for (var k = G.stuck.length - 1; k >= 0; k--) { G.stuck[k].t += dt; if (G.stuck[k].t > 2.5) G.stuck.splice(k, 1); }
@@ -2733,16 +2784,21 @@
   }
   function render() {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    var sh = G.shake;
-    if (sh > 0) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
-    var cz = G.cam.z;
-    if (cz > 1.001) {
+    var sh = G.shake, shx = sh > 0 ? (Math.random() - 0.5) * sh : 0, shy = sh > 0 ? (Math.random() - 0.5) * sh : 0;
+    ctx.translate(shx, shy);
+    var cz = G.cam.z, zoomed = cz > 1.001;
+    // Shot-cam zoom applies to the far world only; the view is clamped inside the scene so it never pans past an edge.
+    function camT() {
+      if (!zoomed) return;
       var vx = clamp(G.cam.fx, W / (2 * cz), W - W / (2 * cz)), vy = clamp(G.cam.fy, H / (2 * cz), H - H / (2 * cz));
       ctx.translate(CX, H / 2); ctx.scale(cz, cz); ctx.translate(-vx, -vy);
     }
+    camT();
     ctx.drawImage(bg, 0, 0, W, H);
     drawEnemyLayer(ctx, DPR);
     drawFx(ctx, 'world');
+    // Foreground (your covers, you, near FX, aim UI) stays in screen space: zoom never pushes you off-screen.
+    if (zoomed) { ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.translate(shx, shy); }
     var pc = playerCoverGeom();
     if (multiSlot()) {
       for (var pi = 0; pi < pSlots().length; pi++) {
@@ -2770,7 +2826,7 @@
       else if (G.hover) drawGuide(ctx, G.hover.x, G.hover.y);
     }
     if (G.phase === 'aim' && G.era.shot.kind === 'hitscan' && G.scope < 0.3 && G.hover && canShoot()) drawCrosshair(ctx, G.hover.x, G.hover.y);
-    drawTexts(ctx);
+    if (zoomed) { ctx.save(); camT(); drawTexts(ctx, 'world'); ctx.restore(); drawTexts(ctx, 'near'); } else drawTexts(ctx);
     if (G.tell > 0 && G.phase === 'botFire') {
       var vg = ctx.createRadialGradient(CX, H / 2, Math.min(W, H) * 0.4, CX, H / 2, Math.max(W, H) * 0.75);
       vg.addColorStop(0, 'rgba(255,40,70,0)'); vg.addColorStop(1, 'rgba(255,40,70,' + (0.3 * G.tell) + ')');
@@ -2796,7 +2852,9 @@
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     CX = W / 2; Y0 = H * 0.52; FOC = Math.min(W * 1.12, H * 0.56);
     // With 3 rocks the player is drawn smaller and higher, leaving the bottom strip for DUCK.
-    PS = Math.min(W / 390, H / 844) * (multiSlot() ? 0.56 : 0.76); PX = W * G.player.xf; PY = multiSlot() ? H - Math.max(60, H * 0.085) : H - Math.max(12, H * 0.015);
+    PS = Math.min(W / 390, H / 844) * (multiSlot() ? 0.56 : 0.76);
+    if (multiSlot() && !G.dragMove && G.player.mt >= BALANCE.move.slide) { var rs = pSlots(); G.player.xf = G.player.from = G.player.to = rs[clamp(G.player.slot, 0, rs.length - 1)]; }
+    PX = W * G.player.xf; PY = multiSlot() ? H - Math.max(60, H * 0.085) : H - Math.max(12, H * 0.015);
     coverCache.clear();
     buildBg();
   }
@@ -2814,13 +2872,28 @@
     }
     return s;
   }
+  function aimEaseCfg() {
+    var a = BALANCE.aimEase[G.era.id] || { ease: 6, cap: 500 }, cap = a.cap * H / 844;
+    if (G.era.shot.kind === 'hitscan') cap /= 1 + (G.era.shot.zoom - 1) * easeOut(G.scope);
+    return { ease: a.ease, cap: cap };
+  }
+  // The finger moves an invisible goal (slingshot invert on both axes: pull down → aim up);
+  // the aim the guide / scope shows, and the one release fires at, eases toward it at a capped speed.
   function applyAimDelta(dx, dy) {
     var k = aimSens();
-    // Slingshot invert on both axes so pull-away aims toward the enemy.
-    G.aim.x = clamp(G.aim.x - dx * k, 0, W);
+    if (!G.aimGoal) G.aimGoal = { x: G.aim.x, y: G.aim.y };
     var yLo = G.era.shot.kind === 'hitscan' ? H * 0.2 : H * 0.08;
     var yHi = G.era.shot.kind === 'hitscan' ? H * 0.9 : H * 0.92;
-    G.aim.y = clamp(G.aim.y - dy * k, yLo, yHi);
+    G.aimGoal.x = clamp(G.aimGoal.x - dx * k, 0, W);
+    G.aimGoal.y = clamp(G.aimGoal.y - dy * k, yLo, yHi);
+  }
+  function stepAim(dt) {
+    var g = G.aimGoal; if (!g || dt <= 0) return;
+    var a = aimEaseCfg(), dx = g.x - G.aim.x, dy = g.y - G.aim.y, L = Math.hypot(dx, dy);
+    if (L < 0.05) { G.aim.x = g.x; G.aim.y = g.y; return; }
+    var mv = Math.min(L * (1 - Math.exp(-a.ease * dt)), a.cap * dt);
+    G.aim.x += dx / L * mv; G.aim.y += dy / L * mv;
+    G.aimSpeed = mv / dt;
   }
   // Aim (pull-down) only in aim phase. Finger-slide move only in playerHide / botFire / swap.
   // HUD / DUCK are separate DOM nodes (duck has pointer-events); canvas drags never start on them.
@@ -2831,7 +2904,7 @@
       if (G.pointerId !== null || !canShoot()) return;
       G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
       // Do not snap aim under the finger — keep startAim reticle; drag pulls it opposite.
-      G.last = pos(ev); G.pressT = G.time;
+      G.last = pos(ev); G.pressT = G.time; G.aimGoal = { x: G.aim.x, y: G.aim.y };
       if (G.era.shot.kind === 'arc') G.aiming = true; else G.scopeTarget = 1;
     } else if (canMove()) {
       G.dragMove = true; G.pointerId = ev.pointerId; try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
@@ -2855,7 +2928,8 @@
       return;
     }
     if (G.phase === 'aim' && fire && G.last) {
-      if (G.era.shot.kind === 'arc') { var ax = G.aim.x, ay = G.aim.y; releaseAim(); playerThrow(ax, ay); return; }
+      G.relLog = { aim: { x: G.aim.x, y: G.aim.y }, goal: G.aimGoal ? { x: G.aimGoal.x, y: G.aimGoal.y } : null };
+      if (G.era.shot.kind === 'arc') { var ax = G.aim.x, ay = G.aim.y; releaseAim(); playerThrow(ax, ay); return; }  // fires at the eased aim
       var held = G.time - G.pressT, steady = held >= 0.22 && G.scope > 0.7;
       var sw = swayOffset(), x = G.aim.x + sw.x * easeOut(G.scope), y = G.aim.y + sw.y * easeOut(G.scope);
       if (!steady) { var an = rnd() * 6.283, d = rnd() * 9; x += Math.cos(an) * d; y += Math.sin(an) * d; }
@@ -3132,6 +3206,8 @@
     aimLine: function () { var a = aimLineInfo(); return a ? { phase: a.phase, x: a.x, y: a.y, target: a.target, u: a.u } : null; },
     callouts: function () { return G.calloutLog.slice(); },
     enemyKnock: function () { return { k: G.enemy.kbK || null, t: G.enemy.kbT || 0 }; },
+    camView: function () { var cz = G.cam.z; if (cz <= 1.001) return { z: 1, x0: 0, x1: W, y0: 0, y1: H }; var vx = clamp(G.cam.fx, W / (2 * cz), W - W / (2 * cz)), vy = clamp(G.cam.fy, H / (2 * cz), H - H / (2 * cz)); return { z: cz, x0: vx - W / (2 * cz), x1: vx + W / (2 * cz), y0: vy - H / (2 * cz), y1: vy + H / (2 * cz) }; },
+    slots: function () { return pSlots().slice(); }, bodyExt: function () { return playerBodyExt(); }, aimEase: function () { return aimEaseCfg(); }, centered: function () { return playerCentered(); },
     playerKnock: function () { return { k: G.player.kbK || null, t: G.player.kbT || 0 }; },
     dashing: function () { return !!G.enemy.dash; },
     coinShown: function () { return $('oCoinN').textContent; },
@@ -3175,6 +3251,18 @@
       return { enemy: en, player: pl };
     },
     botRetarget: function (v) { G.botRetarget = v == null ? null : !!v; },
+    // Pixel bbox of the drawn player (screen px, relative to PX) for the current pose; pose overrides optional.
+    playerBox: function (pose) {
+      var p = G.player, keep = { PX: PX, PY: PY, duck: p.duck, recoil: p.recoil, flash: p.flash, hitT: p.hitT }, ph = G.phase, cool = G.cool;
+      if (pose) { if (pose.duck != null) p.duck = pose.duck; if (pose.recoil != null) p.recoil = pose.recoil; if (pose.phase) G.phase = pose.phase; if (pose.cool != null) G.cool = pose.cool; }
+      p.flash = 0; p.hitT = 0;
+      var cw = Math.ceil(W * 3), chh = Math.ceil(H * 1.5), oc = document.createElement('canvas'); oc.width = cw; oc.height = chh;
+      var c = oc.getContext('2d', { willReadFrequently: true }); PX = cw / 2; PY = chh - 20;
+      try { drawPlayer(c); } finally { var cx0 = PX, cy0 = PY; PX = keep.PX; PY = keep.PY; p.duck = keep.duck; p.recoil = keep.recoil; p.flash = keep.flash; p.hitT = keep.hitT; G.phase = ph; G.cool = cool; }
+      var d = c.getImageData(0, 0, cw, chh).data, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (var y = 0; y < chh; y++) for (var x = 0; x < cw; x++) if (d[(y * cw + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      return { l: x0 - cx0, r: x1 + 1 - cx0, t: y0 - cy0, b: y1 + 1 - cy0, PS: PS, W: W };
+    },
     layout: function () { return { W: W, H: H, DPR: DPR, Y0: Y0, PX: PX, PY: PY, PS: PS }; },
     // Audio resume / mute (iOS call interruption tests)
     audioState: function () { return actx ? actx.state : 'none'; },
