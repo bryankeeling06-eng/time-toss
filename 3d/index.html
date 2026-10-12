@@ -3,30 +3,72 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Time Toss 3D (prototype)</title>
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#3f8fd8 0%,#8cc4ea 38%,#f6d3a6 58%,#c9a46a 60%);font-family:system-ui,-apple-system,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
-canvas{display:block;touch-action:none}
+html,body{margin:0;height:100%;overflow:hidden;background:linear-gradient(#3f8fd8 0%,#8cc4ea 38%,#f6d3a6 58%,#c9a46a 60%);font-family:system-ui,-apple-system,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+canvas{display:block;touch-action:none;position:fixed;inset:0}
 #hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 3px #0008}
-.bar{position:absolute;top:calc(10px + env(safe-area-inset-top));width:42%;height:14px;border:2px solid #fff;border-radius:8px;overflow:hidden;background:#0005}
+.bar{position:absolute;top:calc(10px + env(safe-area-inset-top));width:40%;height:14px;border:2px solid #fff;border-radius:8px;overflow:hidden;background:#0005}
 .bar i{display:block;height:100%;background:#5ad65a;transition:width .2s}
+#hpE i{background:#ff8a4a}
 #hpE{right:10px}#hpP{left:10px}
-.lbl{position:absolute;top:calc(28px + env(safe-area-inset-top));font-size:12px;font-weight:700}
-#banner{position:absolute;top:18%;width:100%;text-align:center;font-size:26px;font-weight:900;letter-spacing:1px}
-#count{position:absolute;top:26%;width:100%;text-align:center;font-size:64px;font-weight:900}
-#hint{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));width:100%;text-align:center;font-size:16px;font-weight:700}
-#info{position:absolute;top:calc(46px + env(safe-area-inset-top));width:100%;text-align:center;font-size:13px;font-weight:700}
+.lbl{position:absolute;top:calc(28px + env(safe-area-inset-top));font-size:12px;font-weight:800}
+#info{position:absolute;top:calc(46px + env(safe-area-inset-top));width:100%;text-align:center;font-size:12px;font-weight:800}
+#banner{position:absolute;top:15%;width:100%;text-align:center;font-size:24px;font-weight:900;letter-spacing:1px;padding:0 10px;box-sizing:border-box}
+#count{position:absolute;top:21%;width:100%;text-align:center;font-size:72px;font-weight:900}
+#count.pop{animation:cpop .5s ease-out}
+@keyframes cpop{0%{transform:scale(1.8);opacity:.2}60%{transform:scale(.95);opacity:1}100%{transform:scale(1)}}
+#callout{position:absolute;top:27%;width:100%;text-align:center;opacity:0}
+#callout .big{font-size:52px;font-weight:900;-webkit-text-stroke:2px #5a2a00;text-shadow:0 4px 0 #5a2a00}
+#callout .sub{font-size:18px;font-weight:900;color:#fff}
+#callout.show{animation:call 1.1s ease-out forwards}
+@keyframes call{0%{opacity:0;scale:2}12%{opacity:1;scale:.9}20%{scale:1}75%{opacity:1}100%{opacity:0;translate:0 -20px}}
+.pop{position:absolute;font-size:24px;font-weight:900;opacity:0;transform:translate(-50%,-50%)}
+.pop.go{animation:popn 1s ease-out forwards}
+@keyframes popn{0%{opacity:1;margin-top:0}100%{opacity:0;margin-top:-60px}}
+#hint{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom));width:100%;text-align:center;font-size:15px;font-weight:800}
+#duck{position:absolute;right:14px;bottom:calc(46px + env(safe-area-inset-bottom));width:82px;height:82px;border-radius:50%;border:none;font:900 16px system-ui;color:#fff;
+  background:radial-gradient(circle,#2d6fd6 58%,transparent 60%),conic-gradient(#7dff7d var(--st,100%),#0006 0);pointer-events:auto;display:none;text-shadow:0 2px 2px #0008;touch-action:none}
+#duck.show{display:block}#duck.down{background:radial-gradient(circle,#174a9a 58%,transparent 60%),conic-gradient(#7dff7d var(--st,100%),#0006 0)}
+#duck.tired{background:radial-gradient(circle,#8a3a3a 58%,transparent 60%),conic-gradient(#ffb0b0 var(--st,100%),#0006 0)}
+#mute{position:absolute;left:10px;top:calc(62px + env(safe-area-inset-top));pointer-events:auto;background:#0004;border:none;border-radius:10px;font-size:18px;padding:4px 8px}
 #fps{position:absolute;left:6px;bottom:6px;font:11px monospace;background:#0008;padding:2px 4px;display:none}
-#proto{position:absolute;right:6px;bottom:6px;font-size:10px;opacity:.7}
+#proto{position:absolute;right:6px;bottom:4px;font-size:9px;opacity:.7}
+.ov{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#2a1606b0;z-index:5;color:#fff;font-family:system-ui;text-align:center}
+.ov.show{display:flex}
+.card{background:linear-gradient(#f3c37a,#d68a3a);border:4px solid #5a2a00;border-radius:22px;padding:18px 18px 16px;width:min(330px,86vw);box-shadow:0 10px 0 #5a2a00;text-shadow:0 2px 0 #5a2a00}
+.card h1{margin:0 0 6px;font-size:34px;font-weight:900}.card h1.lose{color:#ffd0c0}
+.card p{margin:6px 0;font-weight:700}
+.btn{display:block;width:100%;margin:8px 0 0;padding:12px;border:none;border-radius:14px;font:900 19px system-ui;color:#fff;background:#3aa83a;box-shadow:0 4px 0 #1e6a1e;text-shadow:0 2px 0 #0006}
+.btn.alt{background:#2d6fd6;box-shadow:0 4px 0 #17408a}.btn.ghost{background:#7a4a20;box-shadow:0 4px 0 #4a2a10}
+#oCoinBig{font-size:46px;font-weight:900;color:#fff36a;margin:4px 0}#oCoinBig.done{animation:cdone .4s}
+@keyframes cdone{50%{transform:scale(1.3)}}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0002;border-radius:12px;padding:8px;margin:6px 0;text-align:left}
+.srow small{display:block;font-size:11px;font-weight:600}.srow.owned{opacity:.75}
+.srow button{flex:none;border:none;border-radius:10px;padding:8px 10px;font:900 14px system-ui;background:#3aa83a;color:#fff}
+.srow button:disabled{background:#8a7a6a}
 </style>
 </head>
 <body>
 <div id="hud">
-  <div class="bar" id="hpP"><i></i></div><div class="lbl" style="left:12px">YOU</div>
-  <div class="bar" id="hpE"><i></i></div><div class="lbl" style="right:12px">GRUG (BOT)</div>
-  <div id="info"></div><div id="banner"></div><div id="count"></div><div id="hint"></div>
-  <div id="fps"></div><div id="proto">3D prototype · pretend coins only</div>
+  <div class="bar" id="hpP"><i></i></div><div class="lbl" style="left:12px">YOU <span id="hpPn"></span></div>
+  <div class="bar" id="hpE"><i></i></div><div class="lbl" style="right:12px"><span id="hpEn"></span> GRUG (BOT)</div>
+  <div id="info"></div><div id="banner"></div><div id="count"></div><div id="callout"></div><div id="hint"></div>
+  <button id="duck">DUCK</button><button id="mute">🔊</button>
+  <div id="fps"></div><div id="proto">3D prototype · pretend coins only · no ads</div>
 </div>
+<div class="ov" id="menu"><div class="card">
+  <h1>TIME TOSS 3D</h1><p>Stone Age · vs Grug</p><p id="mCoins"></p><p id="mStreak"></p>
+  <button class="btn" id="playBtn">PLAY</button><button class="btn alt" id="menuShopBtn">UPGRADES</button>
+  <p style="font-size:11px;opacity:.85">Prototype. Pretend coins only, no ads, no real money.</p></div></div>
+<div class="ov" id="over"><div class="card">
+  <h1 id="oTitle"></h1><p id="oSub"></p><p id="oDmg"></p><p id="oStats" style="font-size:13px"></p><p id="oStreak"></p>
+  <div id="oCoinBig">+<span id="oCoinN">0</span> 🪙</div><p id="oCoins" style="font-size:13px"></p>
+  <button class="btn" id="againBtn">PLAY AGAIN</button><button class="btn alt" id="overShopBtn">UPGRADES</button><button class="btn ghost" id="overMenuBtn">MENU</button></div></div>
+<div class="ov" id="shop"><div class="card">
+  <h1>UPGRADES</h1><p>Throwing rock · <span id="shopCoins"></span></p><div id="shopList"></div><p id="shopMsg" style="font-size:12px"></p>
+  <button class="btn ghost" id="shopBack">BACK</button></div></div>
 <script type="module" src="./game3d.js"></script>
 </body>
 </html>
