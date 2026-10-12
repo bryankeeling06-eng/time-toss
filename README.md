@@ -19,7 +19,7 @@ All five are playable. Unlock with trophies: **500 / 1,250 / 2,250 / 3,500**.
 ## How to play
 
 1. Tap **PLAY**, pick an unlocked era.
-2. **Hide (5 s):** the enemy scurries between 3 covers — watch where they stop.
+2. **Hide (3 s):** the enemy scurries between 3 covers — watch where they stop.
 3. **Your turn:** **3 shots, no time limit.** Turn ends when the 3rd projectile resolves.
    - **Pull-down slingshot aim (all eras):** press in the throw area, **pull DOWN** (and sideways) — the aim guide / reticle moves the **opposite** way (pull down → aim up toward the enemy). Finger stays low so it doesn’t cover the target. **Release to fire.**
    - Arc eras (Stone / Castle / Wild West): dotted guide + ring; the ring still needs to sit on (or a bit above) the enemy for arcs.
@@ -73,7 +73,7 @@ Numbers live in `BALANCE` at the top of `game.js`.
 | Streak trophy bonus | +0, +5, +10, +15 (caps) |
 | Unlock thresholds | 0 · 500 · 1,250 · 2,250 · 3,500 |
 | Coins win / loss | 50 / 20 (+ streak bonuses) |
-| Shots / hide / rounds | 3 / 5 s / 5 (+ up to 3 sudden death) |
+| Shots / hide / rounds | 3 / 3 s / 5 (+ up to 3 sudden death) |
 | Bot base accuracy (`baseAcc`) | Stone 50% · Castle 55% · Wild West 60% · Desert Ops 65% · Moon 70% (progressive; +trophies, cap 78%) |
 | Bot retarget on slide | **60%** (`bot.retarget`) if settled **≥0.35 s** on the new rock (`retargetSettle`); slide duration **0.25 s** |
 | Moon shield `blockChance` | **0.20** (was 0.35); after a block the next body/head shot is free (`shieldOpen`) |

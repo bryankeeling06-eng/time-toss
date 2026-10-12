@@ -6,7 +6,7 @@
   // BALANCE: every tunable number for progression, economy and combat.
   // =====================================================================
   var BALANCE = {
-    match: { rounds: 5, shots: 3, hide: 5, maxSuddenDeath: 3 },
+    match: { rounds: 5, shots: 3, hide: 3, maxSuddenDeath: 3 },
     // Trophies: +win, -loss (per era index 0..4), era unlock thresholds (index = era).
     // streakBonus[i] = extra trophies for the (i+1)th win in a row; the last value repeats (2nd +5, 3rd +10, 4th+ +15).
     // A loss resets the streak to 0 (a draw leaves it unchanged, no bonus).
@@ -2469,11 +2469,11 @@
     e.plan = null;
     if (spots) {
       // He starts behind the rock he was at, dashes (sometimes via a decoy rock) to a random rock, and peeks once before the cover drops.
-      var cur = nearestIdx(spots, e.wx), fin = Math.floor(rnd() * spots.length), t0 = rr(0.4, 0.8), plan = [];
+      var cur = nearestIdx(spots, e.wx), fin = Math.floor(rnd() * spots.length), t0 = rr(0.25, 0.45), plan = [];  // timed for the 3 s hide window
       if (G.covers && coverDestroyed('e', fin)) { for (var fk = 1; fk < spots.length; fk++) { var alt = (fin + fk) % spots.length; if (!coverDestroyed('e', alt)) { fin = alt; break; } } }
-      if (fin === cur || rnd() < 0.5) { var dec; do { dec = Math.floor(rnd() * spots.length); } while (dec === cur || dec === fin); plan.push({ at: t0, to: dec }); t0 += rr(1.1, 1.5); }
+      if (fin === cur || rnd() < 0.5) { var dec; do { dec = Math.floor(rnd() * spots.length); } while (dec === cur || dec === fin); plan.push({ at: t0, to: dec }); t0 += rr(0.75, 0.95); }
       plan.push({ at: t0, to: fin });
-      e.plan = plan; e.peekAt = rr(3.9, 4.2); e.slot = fin;
+      e.plan = plan; e.peekAt = rr(2.35, 2.5); e.slot = fin;
       nx = spots[fin]; e.wx = e.tx = spots[cur];
     } else {
       var lane = era.lane || [-2.0, 2.4], sep = Math.min(1.4, (lane[1] - lane[0]) * 0.36);
