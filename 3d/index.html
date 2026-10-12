@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Time Toss 3D (prototype)</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#87c6e8;font-family:system-ui,-apple-system,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block;touch-action:none}
+#hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 3px #0008}
+.bar{position:absolute;top:calc(10px + env(safe-area-inset-top));width:42%;height:14px;border:2px solid #fff;border-radius:8px;overflow:hidden;background:#0005}
+.bar i{display:block;height:100%;background:#5ad65a;transition:width .2s}
+#hpE{right:10px}#hpP{left:10px}
+.lbl{position:absolute;top:calc(28px + env(safe-area-inset-top));font-size:12px;font-weight:700}
+#banner{position:absolute;top:18%;width:100%;text-align:center;font-size:26px;font-weight:900;letter-spacing:1px}
+#count{position:absolute;top:26%;width:100%;text-align:center;font-size:64px;font-weight:900}
+#hint{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));width:100%;text-align:center;font-size:16px;font-weight:700}
+#info{position:absolute;top:calc(46px + env(safe-area-inset-top));width:100%;text-align:center;font-size:13px;font-weight:700}
+#fps{position:absolute;left:6px;bottom:6px;font:11px monospace;background:#0008;padding:2px 4px;display:none}
+#proto{position:absolute;right:6px;bottom:6px;font-size:10px;opacity:.7}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="bar" id="hpP"><i></i></div><div class="lbl" style="left:12px">YOU</div>
+  <div class="bar" id="hpE"><i></i></div><div class="lbl" style="right:12px">GRUG (BOT)</div>
+  <div id="info"></div><div id="banner"></div><div id="count"></div><div id="hint"></div>
+  <div id="fps"></div><div id="proto">3D prototype · pretend coins only</div>
+</div>
+<script type="module" src="./game3d.js"></script>
+</body>
+</html>
