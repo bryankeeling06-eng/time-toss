@@ -7,19 +7,19 @@ const DEBUG = Q.has('debug'), TEST = Q.has('test');
 const CFG = {
   hide: 3, shots: 3, rounds: 5, maxSuddenDeath: 3, hp: 100, headMult: 2, legMult: 0.75,
   weaponDmg: 20,                                            // Wooden Spear / throwing rock base body damage (2D stone weapon)
-  bot: { hp: 100, dmg: 14, acc: 0.5, head: 0.15, retarget: 0.6, retargetSettle: 0.35, aimLine: 1.0, runSpeed: 2.0, dashChance: 0.35 },
+  bot: { hp: 100, dmg: 14, acc: 0.5, head: 0.15, retarget: 0.6, retargetSettle: 0.35, aimLine: 1.0, runSpeed: 3.4, dashChance: 0.35 },
   stamina: { drain: 0.2, regen: 0.45, tiredUntil: 0.35 },
   coins: { win: 50, loss: 20, draw: 20, streakBonus: [0, 5, 10, 15] },
   upg: { cost: [0, 150, 400, 900], dmg: [0, 0.10, 0.20, 0.35], steady: [0, 0.30, 0.55, 0.75], speed: [0, 0.06, 0.12, 0.18], names: ['Stock', 'Tuned', 'Pro', 'Legend'] },
   guide: 0.55, knock: { head: 0.6, body: 0.45, leg: 0.75 },
-  g: -12, flight: 0.9, botFlight: 1.0, rockR: 0.18,
+  g: -12, flight: 1.3, botFlight: 1.45, rockR: 0.18, headZone: 0.24,   // v4 range: 2x farther -> longer, loftier arc; head hit radius 0.24*s (visual head 0.3*s)
   slowmo: 0.3, slowWindow: 0.3, holdReal: 0.5,
   aim: { travel: 0.29, ease: 28, cap: 2600 },   // mirrors the 2D stone-age aim tuning (high gain, fast capped ease)
-  slide: 0.25, recenter: 0.3, botScale: 1.35, wince: 0.7,
+  slide: 0.25, recenter: 0.3, botScale: 1.75, hideRun: 7, watchdog: 2.5, wince: 0.7,
 };
 const PX = [-1.4, 0, 1.4], PZ = 0;          // player spots
-const BX = [-2.0, 0, 2.0], BZ = -10;        // bot spots (closer than v1 so Grug reads on a 390-wide screen)
-const P_COVER_H = 1.35, B_COVER_H = 1.45;   // cover heights hide a crouched caveman (bot is scaled up)
+const BX = [-3.0, 0, 3.0], BZ = -20;        // bot spots: 2x farther than v3 (was z -10, x ±2.0)
+const P_COVER_H = 1.35, B_COVER_H = 2.3;   // cover heights hide a crouched caveman (bot is scaled up)
 
 // ---------- renderer / scene ----------
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -28,7 +28,7 @@ renderer.setSize(innerWidth, innerHeight);
 document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 const HORIZON = 0xf6d3a6;
-scene.fog = new THREE.Fog(HORIZON, 28, 85);
+scene.fog = new THREE.Fog(HORIZON, 45, 120);
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 150);
 scene.add(new THREE.HemisphereLight(0xffe2b8, 0x7a4e2a, 1.35));
 const sun = new THREE.DirectionalLight(0xffc27a, 2.3); sun.position.set(6, 9, 5); scene.add(sun);
@@ -93,7 +93,7 @@ function rockPile(x, z, w, h, d) {
   covers.push({ x, z, hx: w / 2, hy: h, hz: d / 2, w0: w / 2, h0: h, mesh, stages, stage: 0, broken: false, shake: 0 });
 }
 PX.forEach((x) => rockPile(x, PZ - 0.85, 1.35, P_COVER_H, 0.8));
-BX.forEach((x) => rockPile(x, BZ + 1.1, 1.65, B_COVER_H, 0.95));
+BX.forEach((x) => rockPile(x, BZ + 1.5, 2.2, B_COVER_H, 1.25));
 // scattered boulders + trees + ferns + volcano + clouds (decor only)
 [[-5, -6], [5.5, -3], [-6.5, -14], [6, -15], [3.5, -21], [-3, -25], [9, -9], [-9, -2]].forEach(([x, z]) => { const s = 0.4 + rnd() * 0.7; scen.add(ICO, ROCKC[Math.floor(rnd() * 6)], [x, s * 0.4, z], [s, s * 0.7, s * 0.9], [rnd(), rnd() * 3, 0], 0.3); });
 [[-6, -9], [6.5, -8], [-7.5, -18], [7.5, -19], [-4.5, -27], [5, -29], [9, -2.5], [-9, -4]].forEach(([x, z], i) => {
@@ -238,6 +238,22 @@ function settled(c) { let s = 0; for (let i = 0; i < 7; i++) s += c.pts[i].dista
 
 const player = makeChar({ s: 1, skin: 0xe9b07a, hair: 0x4a2a14, fur: 0x9a5a28, furD: 0x6e3c18, eye: 0x3a7bd5 }); player.face = -1; player.z = PZ;
 const bot = makeChar({ s: CFG.botScale, skin: 0xc98a5a, hair: 0x2a1a10, fur: 0x6b7a3a, furD: 0x46522a, eye: 0x7a4a1a }); bot.face = 1; bot.z = BZ; bot.x = 0;
+// readability at range: dark inverted-hull outline on Grug's head + torso (2 draws, shared material) and a name tag + HP bar sprite
+{
+  const ol = new THREE.MeshBasicMaterial({ color: 0x2a1405, side: THREE.BackSide, fog: false });
+  const h = new THREE.Mesh(bot.headG.children[0].geometry, ol); h.scale.setScalar(1.09); bot.headG.add(h);
+  const t = new THREE.Mesh(bot.torso.geometry, ol); t.scale.set(1.08, 1.04, 1.1); bot.torso.add(t);
+}
+const tagCv = document.createElement('canvas'); tagCv.width = 256; tagCv.height = 72;
+const tagTex = new THREE.CanvasTexture(tagCv); tagTex.colorSpace = THREE.SRGBColorSpace;
+const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagTex, depthTest: false, fog: false, transparent: true })); tag.renderOrder = 10; tag.scale.set(2.6, 0.73, 1); scene.add(tag);
+let tagHp = -1;
+function drawTag(hp, max) {
+  if (hp === tagHp) return; tagHp = hp; const x = tagCv.getContext('2d'); x.clearRect(0, 0, 256, 72);
+  x.font = '900 34px system-ui,sans-serif'; x.textAlign = 'center'; x.lineWidth = 6; x.strokeStyle = '#3a1a05'; x.strokeText('GRUG', 128, 34); x.fillStyle = '#fff'; x.fillText('GRUG', 128, 34);
+  x.fillStyle = '#3a1a05'; x.fillRect(38, 44, 180, 22); x.fillStyle = '#444'; x.fillRect(42, 48, 172, 14); x.fillStyle = hp / max > 0.35 ? '#ff8a4a' : '#ff3b3b'; x.fillRect(42, 48, 172 * Math.max(0, hp) / max, 14);
+  tagTex.needsUpdate = true;
+}
 
 // ---------- reticle / warning / aim guide ----------
 const reticle = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.3, 20), mat.ring); reticle.renderOrder = 9; scene.add(reticle);
@@ -416,8 +432,8 @@ function hud() {
 
 // ---------- game state ----------
 const G = { phase: 'menu', pt: 0, round: 1, sudden: 0, shot: 0, ts: 1, slow: null, slot: 1, slideFrom: 0, slideT: 9, slideDur: CFG.slide, settledT: 9,
-  aim: { on: false, sx: 0, sy: 0, base: new THREE.Vector2(0, 2.0), tgt: new THREE.Vector2(), shown: new THREE.Vector2() },
-  bot: { slot: 1, plan: [], actT: 1, dash: false, duckT: 0, tx: 0, shots: [], exposed: false },
+  aim: { on: false, sx: 0, sy: 0, base: new THREE.Vector2(0, 2.8), tgt: new THREE.Vector2(), shown: new THREE.Vector2() },
+  bot: { slot: 1, plan: [], actT: 1, dash: false, duckT: 0, tx: 0, shots: [], exposed: false, idleT: 0, hideMoved: false, hideStartX: 0 }, watchdog: 0, trace: {},
   log: [], ko: null, fps: 0, slowCount: 0, dmgP: 0, dmgB: 0, botMax: CFG.bot.hp, countNum: 0, duckHeld: false, stats: { shots: 0, hits: 0, heads: 0, dodges: 0 } };
 player.stam = 1; player.tired = false;
 
@@ -436,11 +452,16 @@ function startMatch() {
 }
 function beginRound() {
   const b = G.bot, ok = intactBotSlots();
-  b.plan = []; b.dash = false; b.duckT = 0; b.shots = []; b.exposed = ok.length === 0;
-  if (ok.length) {   // he only ever hides behind an intact barricade (2D: coverDestroyed check)
-    const fin = ok[Math.floor(Math.random() * ok.length)], cur = b.slot; let t = rr(0.25, 0.45);
-    if ((fin === cur || Math.random() < 0.5) && ok.length > 1) { const dec = ok.filter((i) => i !== fin)[Math.floor(Math.random() * (ok.length - 1))]; if (dec !== cur) { b.plan.push([t, dec]); t += rr(0.75, 0.95); } }
-    b.plan.push([t, fin]);
+  b.plan = []; b.dash = false; b.duckT = 0; b.shots = []; b.exposed = ok.length === 0; b.idleT = 0; b.hideMoved = false; b.hideStartX = bot.x; b.tx = BX[b.slot];
+  // Every hide phase he relocates to a DIFFERENT intact cover. Variety: straight move, fake-out (start toward a decoy,
+  // stop halfway, double back) or a double move (all the way to a decoy, then on to the real cover).
+  const others = ok.filter((i) => i !== b.slot);
+  if (others.length) {
+    const fin = others[Math.floor(Math.random() * others.length)], decoys = ok.filter((i) => i !== fin && i !== b.slot), r = Math.random();
+    let t = rr(0.2, 0.4);
+    if (decoys.length && r < 0.3) { const d = decoys[0]; b.plan.push([t, BX[b.slot] + (BX[d] - BX[b.slot]) * rr(0.4, 0.6), null, 'fake']); t += rr(0.45, 0.6); }
+    else if (r < 0.55) { const d = decoys.length ? decoys[0] : b.slot; if (d !== b.slot) { b.plan.push([t, BX[d], d, 'double']); t += rr(0.8, 0.95); } }
+    b.plan.push([t, BX[fin], fin, 'final']);
   }
   setPhase('enemyHide'); G.countNum = 0;
   banner((G.round > CFG.rounds ? 'SUDDEN DEATH · ' : '') + (b.exposed ? 'NO COVER LEFT FOR GRUG!' : 'GRUG IS HIDING'), 1.6); hint('');
@@ -547,7 +568,7 @@ function collide(r, pos) {
   const t = r.owner === 'player' ? bot : player;
   if (t.rag) return null;
   const p = t.pts, s = t.s;
-  if (pos.distanceTo(p[2]) < 0.3 * s + CFG.rockR) return { res: 'head' };
+  if (pos.distanceTo(p[2]) < CFG.headZone * s + CFG.rockR) return { res: 'head' };
   if (segDist(pos, p[0], p[1]) < 0.3 * s + CFG.rockR) return { res: 'body' };
   if (segDist(pos, p[0], p[5]) < 0.13 * s + CFG.rockR || segDist(pos, p[0], p[6]) < 0.13 * s + CFG.rockR) return { res: 'leg' };
   if (pos.y <= CFG.rockR) return { res: 'miss' };
@@ -591,7 +612,7 @@ function impact(r, res, cov) {
     const txt = hitCover(cov, r.pos); banner(txt, 0.7);
     if (!mine) { G.stats.dodges++; shown = player.crouch > 0.5 ? 'ducked' : 'cover'; if (player.crouch > 0.5) callout('DUCKED!', 'Nice!', '#a8ffb8'); }
     // he leaves a barricade that just got smashed and runs for an intact one
-    if (cov.broken && covers.indexOf(cov) >= 3 && covers.indexOf(cov) - 3 === G.bot.slot) { const ok = intactBotSlots(); if (ok.length) { G.bot.slot = ok[0]; G.bot.dash = true; } else G.bot.exposed = true; }
+    if (cov.broken && covers.indexOf(cov) >= 3 && covers.indexOf(cov) - 3 === G.bot.slot) { const ok = intactBotSlots(); if (ok.length) { G.bot.slot = ok[Math.floor(Math.random() * ok.length)]; G.bot.dash = true; G.bot.tx = BX[G.bot.slot]; } else G.bot.exposed = true; }   // (v3 bug: tx was not updated, so the dash never finished)
   } else {
     if (!mine) { G.stats.dodges++; shown = player.crouch > 0.5 ? 'ducked' : 'missed'; callout(player.crouch > 0.5 ? 'DUCKED!' : 'MISSED ME!', '', '#a8ffb8'); }
     sfx.puff();
@@ -602,7 +623,7 @@ function impact(r, res, cov) {
 // ---------- input (touch + mouse via pointer events; DUCK = hold button or Space/↓) ----------
 const cvs = renderer.domElement;
 let ptr = null;
-function gain() { return 6.5 / (CFG.aim.travel * innerWidth); }   // world units per px: a short drag sweeps all covers
+function gain() { return 10 / (CFG.aim.travel * innerWidth); }   // ~0.29 of screen width sweeps 10 m: outer edge of his left cover -> right cover   // world units per px: a short drag sweeps all covers
 const canAim = () => G.phase === 'aim' && G.aim.ready && !projs.some((r) => r.live) && !G.slow && !G.ko;
 cvs.addEventListener('pointerdown', (e) => {
   e.preventDefault(); ptr = { id: e.pointerId, x: e.clientX, y: e.clientY };
@@ -611,7 +632,7 @@ cvs.addEventListener('pointerdown', (e) => {
 });
 cvs.addEventListener('pointermove', (e) => {
   if (!ptr || e.pointerId !== ptr.id) return;
-  if (G.aim.on) { const k = gain(); G.aim.tgt.set(clampN(G.aim.base.x + (e.clientX - G.aim.sx) * k, -4, 4), clampN(G.aim.base.y - (e.clientY - G.aim.sy) * k, 0.2, 3.8)); }
+  if (G.aim.on) { const k = gain(); G.aim.tgt.set(clampN(G.aim.base.x + (e.clientX - G.aim.sx) * k, -6.5, 6.5), clampN(G.aim.base.y - (e.clientY - G.aim.sy) * k, 0.2, 6.5)); }
   else slideFinger(e.clientX);
 });
 const endPtr = (e) => {
@@ -651,13 +672,14 @@ function drawGuide() {   // dotted arc for the first guideLen() of the throw (Tu
 }
 
 // ---------- camera framing: fit the player + his whole near cover on any portrait aspect ----------
-const fitPts = Array.from({ length: 16 }, () => new THREE.Vector3());
-const camDir = new THREE.Vector3(1.0, 2.9, 7.2).normalize(), lookBase = new THREE.Vector3();
+const fitPts = Array.from({ length: 20 }, () => new THREE.Vector3());
+const camDir = new THREE.Vector3(0.7, 2.9, 7.2).normalize(), lookBase = new THREE.Vector3();
 const FRAME = { left: -0.93, right: 0.93, bottom: -0.86, top: 0.62 };   // NDC box kept clear (top = HUD + Grug, bottom = hint/duck)
 function framePoints(px) {
   const c = covers[G.slot], hx = c.w0 * 1.05, ch = c.h0 * 1.02, cz = c.z;
   let i = 0; for (const x of [c.x - hx, c.x + hx]) for (const y of [0, ch]) for (const z of [cz - c.hz, cz + c.hz]) fitPts[i++].set(x, y, z);
   for (const x of [px - 0.62, px + 0.62]) for (const y of [0, 2.15]) for (const z of [PZ - 0.45, PZ + 0.45]) fitPts[i++].set(x, y, z);
+  const fc = covers[3]; for (const x of [BX[0] - fc.w0, BX[2] + fc.w0]) for (const y of [0, fc.h0 + 1.6]) fitPts[i++].set(x, y, fc.z);   // whole far cover row + Grug's head room
   return fitPts;
 }
 const fitCam = new THREE.PerspectiveCamera();
@@ -695,7 +717,9 @@ function update(dtReal) {
 
   const b = G.bot, anyLive = projs.some((r) => r.live);
   if (G.phase === 'enemyHide' || G.phase === 'playerHide') {
-    if (G.phase === 'enemyHide' && b.plan.length && G.pt >= b.plan[0][0]) b.slot = b.plan.shift()[1];
+    if (G.phase === 'enemyHide' && b.plan.length && G.pt >= b.plan[0][0]) { const [, x, slot] = b.plan.shift(); b.tx = x; if (slot != null) b.slot = slot; }
+    // watchdog (hide): if he still hasn't left his spot by 1.6 s, send him to another intact cover
+    if (G.phase === 'enemyHide' && !b.hideMoved && G.pt > 1.6 && !b.plan.length) { const o = intactBotSlots().filter((i) => i !== b.slot); if (o.length) { b.slot = o[Math.floor(Math.random() * o.length)]; b.tx = BX[b.slot]; G.watchdog++; } }
     const n = Math.max(1, CFG.hide - Math.floor(G.pt));
     if (n !== G.countNum && G.pt < CFG.hide) { G.countNum = n; showCount(n); sfx.beep(n === 1); }   // 3-2-1 with beeps
     if (G.pt >= CFG.hide) { showCount(0); if (G.phase === 'enemyHide') startAim(); else startBotFire(); }
@@ -706,17 +730,21 @@ function update(dtReal) {
       else if (G.slideT >= G.slideDur && bot.crouch < 0.3) G.aim.ready = true;
     }
     // moving target (2D aim-phase AI at era 0): dash to another INTACT cover, side-step, or duck briefly
-    if (!anyLive && !G.slow && !G.ko && !G.aim.on) {
-      if (b.dash) { if (Math.abs(bot.x - BX[b.slot]) < 0.02) { b.dash = false; b.actT = rr(0.6, 1.2); b.tx = BX[b.slot]; } }
+    // NOTE (v4 fix): v3 also required !G.aim.on here, so the AI clock stopped whenever a finger was down. On a phone
+    // you drag almost the whole aim phase, and the rest of the time a rock is in flight -> Grug never moved.
+    if (!anyLive && !G.slow && !G.ko) {
+      // watchdog (aim): nothing happened for CFG.watchdog s -> force a strafe or a dash
+      if (b.idleT > CFG.watchdog) { const o = intactBotSlots().filter((i) => i !== b.slot); if (o.length && Math.random() < 0.6) { b.slot = o[Math.floor(Math.random() * o.length)]; b.dash = true; b.tx = BX[b.slot]; } else { b.dash = false; b.tx = BX[b.slot] + (bot.x > BX[b.slot] ? -1 : 1) * rr(0.6, 1.0); } b.idleT = 0; b.actT = rr(0.8, 1.4); G.watchdog++; }
+      if (b.dash) { if (Math.abs(bot.x - b.tx) < 0.02) { b.dash = false; b.actT = rr(0.6, 1.2); b.tx = BX[b.slot]; } }
       else {
         if (b.duckT > 0) b.duckT -= dt;
         b.actT -= dt;
         if (b.actT <= 0) {
           const others = intactBotSlots().filter((i) => i !== b.slot), r = Math.random();
           if (others.length && r < CFG.bot.dashChance) { b.slot = others[Math.floor(Math.random() * others.length)]; b.dash = true; b.tx = BX[b.slot]; }
-          else if (r < 0.55) { b.tx = BX[b.slot] + (Math.random() < 0.5 ? -1 : 1) * rr(0.35, 0.6); b.actT = rr(0.9, 1.6) * 1.4; }
-          else if (r < 0.67) { b.duckT = rr(0.35, 0.55); b.actT = b.duckT + rr(0.5, 1.0); }
-          else b.actT = rr(0.8, 1.6) * 1.4;
+          else if (r < 0.62) { b.tx = BX[b.slot] + (bot.x > BX[b.slot] + 0.1 ? -1 : bot.x < BX[b.slot] - 0.1 ? 1 : Math.random() < 0.5 ? -1 : 1) * rr(0.6, 1.0); b.actT = rr(0.7, 1.3); }   // strafe out / peek
+          else if (r < 0.8) { b.duckT = rr(0.35, 0.55); b.actT = b.duckT + rr(0.4, 0.8); b.tx = BX[b.slot]; }   // duck back behind cover
+          else b.actT = rr(0.5, 1.1);
         }
       }
     }
@@ -735,7 +763,7 @@ function update(dtReal) {
         let tx = PX[s.target], ty = 1.45;
         if (intent === 'miss') { tx += (Math.random() < 0.5 ? -1 : 1) * rr(0.75, 0.95); ty = rr(0.9, 1.6); } else { tx += rr(-0.08, 0.08); ty = intent === 'head' ? 1.78 : 1.45; }
         s.intent = intent;
-        launch('bot', new THREE.Vector3(bot.x - 0.6, 2.9, BZ + 0.4), new THREE.Vector3(tx, ty, PZ), CFG.botFlight);
+        launch('bot', bot.pts[4].clone().setZ(BZ + 0.6), new THREE.Vector3(tx, ty, PZ), CFG.botFlight);
       }
       if (!s.fired) pending = true;
     }
@@ -745,24 +773,29 @@ function update(dtReal) {
 
   // bot motion: hide crouched behind his (intact) cover, stand to throw; holds still while your rock flies
   if (!bot.rag) {
-    if (G.phase !== 'aim') b.tx = BX[b.slot];
-    const sp = b.dash ? CFG.bot.runSpeed : G.phase === 'enemyHide' ? 5 : 1.0;
+    if (G.phase !== 'aim' && G.phase !== 'enemyHide') b.tx = BX[b.slot];
+    const sp = b.dash ? CFG.bot.runSpeed : G.phase === 'enemyHide' ? CFG.hideRun : 1.8;
+    const x0 = bot.x, c0 = bot.crouch;
     if (!(G.phase === 'aim' && anyLive)) bot.x += clampN(b.tx - bot.x, -dt * sp, dt * sp);
+    if (Math.abs(bot.x - b.hideStartX) > 0.3 && G.phase === 'enemyHide') b.hideMoved = true;
+    if (TEST) { const k = G.round + ':' + G.phase; const tr = G.trace[k] || (G.trace[k] = { min: bot.x, max: bot.x, slots: [] }); tr.min = Math.min(tr.min, bot.x); tr.max = Math.max(tr.max, bot.x); if (tr.slots[tr.slots.length - 1] !== b.slot) tr.slots.push(b.slot); }
     const hidden = G.phase === 'enemyHide' || G.phase === 'swap' || G.phase === 'playerHide' || G.phase === 'roundEnd' || (G.phase === 'aim' && b.duckT > 0 && !b.dash);
     bot.crouch += ((hidden ? 1 : 0) - bot.crouch) * Math.min(1, dt * 8);
+    if (G.phase === 'aim' && !anyLive && !G.slow && !G.ko) b.idleT = Math.abs(bot.x - x0) > 1e-4 || Math.abs(bot.crouch - c0) > 1e-3 ? 0 : (b.idleT || 0) + dt; else b.idleT = 0;
   }
   projs.forEach((r) => stepProj(r, dt)); stepParticles(dt); stepCoverShake(dt);
   for (let i = projs.length - 1; i >= 0; i--) if (!projs[i].live && projs[i].age > 3) { scene.remove(projs[i].mesh); projs.splice(i, 1); }
   for (const c of [player, bot]) { if (c.rag) { const n = Math.ceil(dt / (1 / 120)); for (let i = 0; i < n; i++) stepRagdoll(c, dt / n); } else pose(c); draw(c, dtReal); }
 
   reticle.visible = G.phase === 'aim' && (G.aim.ready || G.aim.on);
-  reticle.position.set(G.aim.shown.x, G.aim.shown.y, BZ + 0.2); reticle.lookAt(camera.position);
+  reticle.position.set(G.aim.shown.x, G.aim.shown.y, BZ + 0.2); reticle.scale.setScalar(1.6); reticle.lookAt(camera.position);
   warn.visible = G.phase === 'botFire' && b.windup === true; warn.position.set(PX[b.tgtSlot], 0.03, PZ);
   warn.material.opacity = 0.3 + 0.25 * Math.sin(performance.now() / 70);
   drawGuide();
+  tag.visible = !bot.rag && G.phase !== 'menu' && G.phase !== 'enemyHide'; if (tag.visible) { drawTag(Math.ceil(bot.hp), G.botMax); tag.position.copy(bot.pts[2]).y += 0.95 * bot.s; }
 
   // camera: fitted third-person view (whole near cover + player on screen), slow-mo zooms onto the target
-  lookBase.set(player.x * 0.35, 0.9, -4.6);
+  lookBase.set(player.x * 0.35, 1.0, -6.5);
   const want = new THREE.Vector3(), look = lookBase.clone();
   if (G.fitD == null || Math.abs(G.fitX - player.x) > 0.01 || G.fitSlot !== G.slot) { G.fitD = fitDistance(player.x, lookBase); G.fitX = player.x; G.fitSlot = G.slot; }
   want.copy(lookBase).addScaledVector(camDir, G.fitD);
@@ -780,7 +813,7 @@ function update(dtReal) {
 let last = performance.now(), fAcc = 0, fN = 0;
 if (DEBUG) $('fps').style.display = 'block';
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;   // up to 100 ms per frame (projectiles/ragdoll substep), so slow phones keep real-time pace
   update(dt); renderer.render(scene, camera);
   fAcc += dt; fN++; if (fAcc >= 0.5) { G.fps = fN / fAcc; fAcc = 0; fN = 0; if (DEBUG) $('fps').textContent = `${G.fps.toFixed(0)} fps · ${renderer.info.render.calls} calls · ${renderer.info.render.triangles} tris · pr ${renderer.getPixelRatio()}`; }
   requestAnimationFrame(frame);
@@ -794,12 +827,13 @@ if (TEST) {
     G, player, bot, CFG, PX, BX, BZ, covers, cam: camera, renderer, sfxLog, calloutLog, SAVE_KEY,
     save: () => SAVE, coins: coinsNow, upgTier, playerDmg, flightTime, guideLen, startMatch, beginRound, buyUpgrade,
     aimDelta: (wx, wy) => { const k = gain(); return { dx: (wx - G.aim.base.x) / k, dy: -(wy - G.aim.base.y) / k }; },
+    predict: (x, y) => { const from = handPos(), to = new THREE.Vector3(x, y, BZ), T = flightTime(); const v = to.clone().sub(from).multiplyScalar(1 / T); v.y -= 0.5 * CFG.g * T; return preResolve({ owner: 'player', pos: from, vel: v }); },
     smash: (ids) => ids.forEach((i) => { const c = covers[i]; c.stage = COVER_HITS; c.broken = true; c.mesh.visible = false; }),
     frame: () => {   // on-screen px boxes of the player's body (+ head radius) and his current near cover (true geometry bounds)
       const c = covers[G.slot], bb = c.mesh.geometry.boundingBox, cp = [];
       for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) cp.push(new THREE.Vector3(c.x + x, y, c.z + z));
       const pp = []; player.pts.forEach((p) => { for (const d of [[0.35, 0, 0], [-0.35, 0, 0], [0, 0.35, 0], [0, -0.1, 0]]) pp.push(p.clone().add(new THREE.Vector3(...d))); });
-      const g = bot.pts[2].clone().setY(bot.pts[2].y + 0.4 * bot.s), gf = bot.pts[5].clone().setY(0);
+      const g = new THREE.Vector3(bot.x, 2.15 * bot.s, BZ), gf = new THREE.Vector3(bot.x, 0, BZ);   // his standing height on screen (independent of a duck in progress)
       return { W: innerWidth, H: innerHeight, cover: box(cp), player: box(pp), grugPx: Math.round(box([gf]).y0 - box([g]).y0) };
     },
   };

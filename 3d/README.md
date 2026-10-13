@@ -13,6 +13,11 @@ Level 1 (Stone Age, vs Grug) plays the same way as the 2D level. Its numbers are
 - **Grug (bot):** 100 HP, 14 damage, 50% accuracy, 15% head shots. A red ring locks onto your cover 1 s before he throws, and if you've settled on another cover he re-aims there 60% of the time.
   - **Duck:** hold DUCK (or Space/↓) to drop behind your cover. Ducking drains stamina at 0.2/s, it regenerates at 0.45/s, and once you run out you're too tired to duck until it's back to 0.35.
   - **Moving target:** while you aim he dashes between his intact covers, side-steps, or ducks briefly.
+- **Range (v4):** Grug's row is 20 m away (2× the old 10 m) and he's drawn 1.75× scale with an outline and a GRUG name tag + HP bar.
+  - Throws fly 1.3 s with a higher arc, and a short drag still sweeps every cover.
+  - The head hit zone is 0.24× his scale; the drawn head is 0.30×.
+  - His throws take 1.45 s, plus a 1 s warning ring.
+- **Grug AI (v4):** every hide phase he moves to a different intact cover: a straight move, a fake-out, or a double move. While you aim he dashes, strafes, peeks and ducks, even while your finger is down. A watchdog re-plans if he idles for 2.5 s.
 - **Crumbling barricades:** 4 hits each, with 3D stage shapes and pooled debris and dust. Grug only hides behind intact covers; when all of his are smashed, he's exposed.
 - **Coins and save:** pretend coins only, with no ads and no money. A win pays 50 coins plus a streak bonus (+5/+10/+15) and a loss pays 20. Coins have a count-up animation and are saved under **`timetoss3d_save_v1`**. The 2D save (`timetoss_save_v2`) is never read or written.
 - **Upgrades** (same effects as the 2D tiers):
