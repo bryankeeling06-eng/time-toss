@@ -732,7 +732,7 @@ function update(dtReal) {
     // moving target (2D aim-phase AI at era 0): dash to another INTACT cover, side-step, or duck briefly
     // NOTE (v4 fix): v3 also required !G.aim.on here, so the AI clock stopped whenever a finger was down. On a phone
     // you drag almost the whole aim phase, and the rest of the time a rock is in flight -> Grug never moved.
-    if (!anyLive && !G.slow && !G.ko) {
+    if (!anyLive && !G.slow && !G.ko && !(TEST && G.aiHold)) {
       // watchdog (aim): nothing happened for CFG.watchdog s -> force a strafe or a dash
       if (b.idleT > CFG.watchdog) { const o = intactBotSlots().filter((i) => i !== b.slot); if (o.length && Math.random() < 0.6) { b.slot = o[Math.floor(Math.random() * o.length)]; b.dash = true; b.tx = BX[b.slot]; } else { b.dash = false; b.tx = BX[b.slot] + (bot.x > BX[b.slot] ? -1 : 1) * rr(0.6, 1.0); } b.idleT = 0; b.actT = rr(0.8, 1.4); G.watchdog++; }
       if (b.dash) { if (Math.abs(bot.x - b.tx) < 0.02) { b.dash = false; b.actT = rr(0.6, 1.2); b.tx = BX[b.slot]; } }
